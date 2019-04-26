@@ -148,7 +148,7 @@ public class ScanWifiTask extends WifiTask {
         dest.writeLong(mScanWifiTimeout);
         dest.writeLong(mSetWifiEnabledTimeout);
         dest.writeInt(mScanWifiWay);
-        dest.writeInt((byte) (mIsAutoSwitchToThroughSystemWifi ? 1 : 0));
+        dest.writeByte((byte) (mIsAutoSwitchToThroughSystemWifi ? 1 : 0));
     }
 
     @Override
