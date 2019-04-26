@@ -44,7 +44,6 @@ import java.util.List;
  * 6.Get current connected wifi info;
  * <p>
  * <p>
- * fixme 1.pwd wrong.
  *
  * @author likangren
  */
