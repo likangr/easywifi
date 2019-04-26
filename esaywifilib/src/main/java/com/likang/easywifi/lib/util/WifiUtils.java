@@ -58,6 +58,10 @@ public class WifiUtils {
     }
 
 
+    public static boolean isConfiguredWifiPasswordIsWrong(WifiConfiguration wifiConfiguration) {
+        return wifiConfiguration.status == WifiConfiguration.Status.DISABLED;
+    }
+
     public static boolean connectToConfiguredWifi(WifiManager wifiManager, int networkId) {
         return wifiManager.enableNetwork(networkId, true);
     }
@@ -72,6 +76,13 @@ public class WifiUtils {
         WifiEncryptionScheme.configEncryptionScheme(wifiConfiguration, encryptionScheme, password);
         wifiConfiguration.networkId = wifiManager.addNetwork(wifiConfiguration);
         return wifiConfiguration;
+    }
+
+
+    public static int updateConfiguredWifiPassword(WifiManager wifiManager, WifiConfiguration configuredWifiConfiguration, String password) {
+        String encryptionScheme = WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(configuredWifiConfiguration);
+        WifiEncryptionScheme.configEncryptionScheme(configuredWifiConfiguration, encryptionScheme, password);
+        return wifiManager.updateNetwork(configuredWifiConfiguration);
     }
 
 

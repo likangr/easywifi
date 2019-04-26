@@ -14,7 +14,7 @@ import com.likang.easywifi.lib.util.ApplicationHolder;
 /**
  * @author likangren
  */
-public class ScanWifiTask extends WifiTask<ScanWifiTask.OnScanWifiCallback> {
+public class ScanWifiTask extends WifiTask {
 
     private long mScanWifiTimeout;
     private long mSetWifiEnabledTimeout;
@@ -28,36 +28,19 @@ public class ScanWifiTask extends WifiTask<ScanWifiTask.OnScanWifiCallback> {
                         int scanWifiWay,
                         boolean isAutoSwitchToThroughSystemWifi,
                         Activity singleTaskActivity,
-                        OnScanWifiCallback onScanWifiCallback) {
-        super(onScanWifiCallback);
+                        WifiTaskCallback wifiTaskCallback) {
+        super(wifiTaskCallback);
         mScanWifiTimeout = scanWifiTimeout;
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
         mScanWifiWay = scanWifiWay;
         mIsAutoSwitchToThroughSystemWifi = isAutoSwitchToThroughSystemWifi;
         mSingleTaskActivity = singleTaskActivity;
 
-        if (mScanWifiWay == EasyWifi.SCAN_WIFI_WAY_THROUGH_WIFI_SETTING || mIsAutoSwitchToThroughSystemWifi) {
-            if (mSingleTaskActivity == null) {
-                throw new IllegalArgumentException("singleTaskActivity can't be null!");
-            }
-
-            int launchMode = -1;
-            try {
-                Application application = ApplicationHolder.getApplication();
-                ComponentName componentName = new ComponentName(application, singleTaskActivity.getClass());
-                launchMode = application.getPackageManager().getActivityInfo(componentName, PackageManager.GET_META_DATA).launchMode;
-            } catch (PackageManager.NameNotFoundException e) {
-                e.printStackTrace();
-            }
-
-            if (launchMode != ActivityInfo.LAUNCH_SINGLE_TASK) {
-                throw new IllegalArgumentException("singleTaskActivity's launch mode must be single task!");
-            }
-        }
     }
 
 
     protected ScanWifiTask(Parcel in) {
+        super(in);
         mScanWifiTimeout = in.readLong();
         mSetWifiEnabledTimeout = in.readLong();
         mScanWifiWay = in.readInt();
@@ -106,6 +89,46 @@ public class ScanWifiTask extends WifiTask<ScanWifiTask.OnScanWifiCallback> {
     }
 
 
+    @Override
+    void checkParams() {
+
+        if (mSetWifiEnabledTimeout < 0) {
+            throw new IllegalArgumentException("SetWifiEnabledTimeout must more than 0!");
+        }
+        if (mScanWifiTimeout < 0) {
+            throw new IllegalArgumentException("ScanWifiTimeout must more than 0!");
+        }
+
+        if (mScanWifiWay != EasyWifi.SCAN_WIFI_WAY_THROUGH_WIFI_SETTING && mScanWifiWay != EasyWifi.SCAN_WIFI_WAY_INITIATIVE) {
+            throw new IllegalArgumentException("ScanWifiWay must be one of EasyWifi.SCAN_WIFI_WAY_THROUGH_WIFI_SETTING or EasyWifi.SCAN_WIFI_WAY_INITIATIVE");
+        }
+
+        if (mScanWifiWay == EasyWifi.SCAN_WIFI_WAY_THROUGH_WIFI_SETTING || mIsAutoSwitchToThroughSystemWifi) {
+            if (mSingleTaskActivity == null) {
+                throw new IllegalArgumentException("SingleTaskActivity can't be null!");
+            }
+
+            int launchMode = -1;
+            try {
+                Application application = ApplicationHolder.getApplication();
+                ComponentName componentName = new ComponentName(application, mSingleTaskActivity.getClass());
+                launchMode = application.getPackageManager().getActivityInfo(componentName, PackageManager.GET_META_DATA).launchMode;
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+
+            if (launchMode != ActivityInfo.LAUNCH_SINGLE_TASK) {
+                throw new IllegalArgumentException("SingleTaskActivity's launch mode must be single task!");
+            }
+        }
+    }
+
+    @Override
+    public void run() {
+        super.run();
+        EasyWifi.scanWifi(this);
+    }
+
     public static final Creator<ScanWifiTask> CREATOR = new Creator<ScanWifiTask>() {
         @Override
         public ScanWifiTask createFromParcel(Parcel in) {
@@ -118,24 +141,10 @@ public class ScanWifiTask extends WifiTask<ScanWifiTask.OnScanWifiCallback> {
         }
     };
 
-    @Override
-    public void run() {
-        super.run();
-        EasyWifi.scanWifi(this);
-    }
-
-    @Override
-    public void cancel() {
-        super.cancel();
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        super.writeToParcel(dest, flags);
         dest.writeLong(mScanWifiTimeout);
         dest.writeLong(mSetWifiEnabledTimeout);
         dest.writeInt(mScanWifiWay);
@@ -150,21 +159,10 @@ public class ScanWifiTask extends WifiTask<ScanWifiTask.OnScanWifiCallback> {
                 ", mScanWifiWay=" + mScanWifiWay +
                 ", mIsAutoSwitchToThroughSystemWifi=" + mIsAutoSwitchToThroughSystemWifi +
                 ", mSingleTaskActivity=" + mSingleTaskActivity +
+                ", mWifiTaskCallback=" + mWifiTaskCallback +
+                ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mFailReason=" + mFailReason +
+                ", mCurrentStatus=" + mCurrentStatus +
                 '}';
     }
-
-    public interface OnScanWifiCallback extends WifiTaskCallback {
-
-        void onScanWifiPreparing();
-
-        void onScanWifiPreparingNextStep(int nextStep);
-
-        void onScanWifiStart();
-
-        void onScanWifiSuccess();
-
-        void onScanWifiFail(int scanWifiFailReason);
-
-    }
-
 }

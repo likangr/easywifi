@@ -10,11 +10,11 @@ import android.content.IntentFilter;
 import android.net.NetworkInfo;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.widget.Toast;
 
@@ -43,6 +43,8 @@ import java.util.List;
  * 5.Connect to any wifi;
  * 6.Get current connected wifi info;
  * <p>
+ * <p>
+ * fixme 1.pwd wrong.
  *
  * @author likangren
  */
@@ -54,12 +56,7 @@ public final class EasyWifi {
     private static WifiManager sWifiManager;
     private static boolean sIsInitialised = false;
     private static Handler sHandler;
-
-    public static final int WIFI_TASK_TYPE_UNKNOWN = -1;
-    public static final int WIFI_TASK_TYPE_SCAN_WIFI = 1;
-    public static final int WIFI_TASK_TYPE_CONNECT_WIFI = 2;
-    public static final int WIFI_TASK_TYPE_SET_WIFI_ENABLED = 3;
-    public static final int WIFI_TASK_TYPE_GET_CONNECTION_INFO = 4;
+    private static final Object sLock = new Object();
 
     public static final int TASK_FAIL_REASON_LOCATION_MODULE_DISABLE = 1;
     public static final int TASK_FAIL_REASON_LOCATION_MODULE_NOT_EXIST = 2;
@@ -79,15 +76,15 @@ public final class EasyWifi {
     public static final int TASK_FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED = 13;
     public static final int TASK_FAIL_REASON_SCAN_WIFI_TIMEOUT = 14;
 
-    public static final int PREPARING_NEXT_STEP_CHECK_LOCATION_ENABLED = 1;
-    public static final int PREPARING_NEXT_STEP_CHECK_LOCATION_PERMISSION = 2;
-    public static final int PREPARING_NEXT_STEP_REQUEST_LOCATION_PERMISSION = 3;
-    public static final int PREPARING_NEXT_STEP_LOCATION_ENABLE = 4;
+    public static final int PREPARING_CURRENT_STEP_CHECK_LOCATION_ENABLED = 1;
+    public static final int PREPARING_CURRENT_STEP_SET_LOCATION_ENABLED = 2;
+    public static final int PREPARING_CURRENT_STEP_CHECK_LOCATION_PERMISSION = 3;
+    public static final int PREPARING_CURRENT_STEP_REQUEST_LOCATION_PERMISSION = 4;
 
-    public static final int PREPARING_NEXT_STEP_CHECK_WIFI_ENABLED = 5;
-    public static final int PREPARING_NEXT_STEP_CHECK_WIFI_PERMISSION = 6;
-    public static final int PREPARING_NEXT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION = 7;
-    public static final int PREPARING_NEXT_STEP_SET_WIFI_ENABLED = 8;
+    public static final int PREPARING_CURRENT_STEP_CHECK_WIFI_ENABLED = 5;
+    public static final int PREPARING_CURRENT_STEP_CHECK_WIFI_PERMISSION = 6;
+    public static final int PREPARING_CURRENT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION = 7;
+    public static final int PREPARING_CURRENT_STEP_SET_WIFI_ENABLED = 8;
 
     public static final int CONNECTING_DETAIL_AUTHENTICATING = 1;
     public static final int CONNECTING_DETAIL_OBTAINING_IP_ADDR = 2;
@@ -116,8 +113,6 @@ public final class EasyWifi {
     /*****open aip****/
 
     /**
-     * must invoke in Application onCreate.
-     *
      * @param application
      */
 
@@ -125,15 +120,26 @@ public final class EasyWifi {
         ApplicationHolder.init(application);
         sApplication = application;
         sWifiManager = (WifiManager) application.getSystemService(Context.WIFI_SERVICE);
-        sHandler = new Handler();
-        sIsInitialised = true;
+        sHandler = new Handler(Looper.getMainLooper());
+        synchronized (sLock) {
+            sIsInitialised = true;
+        }
     }
 
     /**
      * @return
      */
     public static WifiManager getWifiManager() {
+        checkIsInitialised();
         return sWifiManager;
+    }
+
+    /**
+     * @return
+     */
+    public static Handler getHandler() {
+        checkIsInitialised();
+        return sHandler;
     }
 
     /**
@@ -209,6 +215,7 @@ public final class EasyWifi {
         return configuredWifiConfiguration;
     }
 
+
     /**
      * @param wifiTask
      */
@@ -216,7 +223,6 @@ public final class EasyWifi {
         checkIsInitialised();
         wifiTask.run();
     }
-
 
     public static void cancelTask(WifiTask wifiTask) {
         checkIsInitialised();
@@ -233,13 +239,13 @@ public final class EasyWifi {
 //        if (!LocationUtils.checkLocationModuleIsExist()) {
 //            onPrepareCallback.onPrepareFail(wifiTaskType, TASK_FAIL_REASON_LOCATION_MODULE_NOT_EXIST);
 //        } else if (!LocationUtils.isLocationEnabled()) {
-//            onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_LOCATION_ENABLE);
+//            onPrepareCallback.onPreparingCurrentStep(wifiTaskType, PREPARING_CURRENT_STEP_SET_LOCATION_ENABLED);
 //            IntentManager.gotoUserActionBridgeActivity(wifiTaskType,
 //                    UserActionBridgeActivity.STEP_CODE_ENABLE_LOCATION_MODULE,
 //                    new UserActionBridgeActivity.OnUserDoneCallback() {
 //                        @Override
 //                        public void onUserDoneIsWeExcepted(int stepCode) {
-//                            nextStep.run();
+//                            currentStep.run();
 //                        }
 //
 //                        @Override
@@ -252,7 +258,7 @@ public final class EasyWifi {
 //
 //        boolean isHasLocationPermission = LocationUtils.checkHasLocationPermissions();
 //
-//        final Runnable nextStep = new Runnable() {
+//        final Runnable currentStep = new Runnable() {
 //            @Override
 //            public void run() {
 //                if (WIFI_TASK_TYPE_SCAN_WIFI == wifiTaskType || WIFI_TASK_TYPE_CONNECT_WIFI == wifiTaskType) {
@@ -264,15 +270,15 @@ public final class EasyWifi {
 //        };
 //
 //        if (isHasLocationPermission) {
-//            nextStep.run();
+//            currentStep.run();
 //        } else {
 //
-//            onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_REQUEST_LOCATION_PERMISSION);
+//            onPrepareCallback.onPreparingCurrentStep(wifiTaskType, PREPARING_CURRENT_STEP_REQUEST_LOCATION_PERMISSION);
 //            IntentManager.gotoUserActionBridgeActivity(wifiTaskType,
 //                    UserActionBridgeActivity.STEP_CODE_REQUEST_LOCATION_PERMISSION, new UserActionBridgeActivity.OnUserDoneCallback() {
 //                        @Override
 //                        public void onUserDoneIsWeExcepted(int stepCode) {
-//                            nextStep.run();
+//                            currentStep.run();
 //                        }
 //
 //                        @Override
@@ -286,13 +292,13 @@ public final class EasyWifi {
 //        if (!WifiUtils.checkWifiModuleIsExist(sWifiManager)) {
 //            onPrepareCallback.onPrepareFail(wifiTaskType, TASK_FAIL_REASON_WIFI_MODULE_NOT_EXIST);
 //        } else if (!WifiUtils.checkHasChangeWifiStatePermission(sWifiManager)) {
-//            onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION);
+//            onPrepareCallback.onPreparingCurrentStep(wifiTaskType, PREPARING_CURRENT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION);
 //            IntentManager.gotoUserActionBridgeActivity(wifiTaskType,
 //                    UserActionBridgeActivity.STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION,
 //                    new UserActionBridgeActivity.OnUserDoneCallback() {
 //                        @Override
 //                        public void onUserDoneIsWeExcepted(int stepCode) {
-//                            nextStep.run();
+//                            currentStep.run();
 //                        }
 //
 //                        @Override
@@ -306,40 +312,26 @@ public final class EasyWifi {
     }
 
     /**
-     * @param wifiTask
+     * @param setWifiEnabledTask
      */
-    public static void setWifiEnabled(final SetWifiEnabledTask wifiTask) {
-        setWifiEnabledTaskPrepare(wifiTask.isEnabled(), wifiTask.getSetWifiEnabledTimeout(), new OnPrepareCallback() {
+    public static void setWifiEnabled(final SetWifiEnabledTask setWifiEnabledTask) {
+        setWifiEnabledTask.callOnTaskStartRun();
+
+        setWifiEnabledTaskPrepare(setWifiEnabledTask, new OnPrepareCallback() {
+
             @Override
-            public void onPrepareStart(int wifiTaskType) {
-                if (wifiTask.getWifiTaskCallback() != null) {
-                    wifiTask.getWifiTaskCallback().onSetWifiEnabledPreparing(wifiTask.isEnabled());
-                }
+            public void onPreparingCurrentStep(int currentStep) {
+                setWifiEnabledTask.callOnTaskRunningCurrentStep(currentStep);
             }
 
             @Override
-            public void onPreparingNextStep(int wifiTaskType, int nextStep) {
-                if (wifiTask.getWifiTaskCallback() != null) {
-                    if (nextStep == PREPARING_NEXT_STEP_SET_WIFI_ENABLED) {
-                        wifiTask.getWifiTaskCallback().onSetWifiEnabledStart(wifiTask.isEnabled());
-                    } else {
-                        wifiTask.getWifiTaskCallback().onSetWifiEnabledPreparingNextStep(wifiTask.isEnabled(), nextStep);
-                    }
-                }
+            public void onPrepareSuccess() {
+                setWifiEnabledTask.callOnTaskSuccess();
             }
 
             @Override
-            public void onPrepareSuccess(int wifiTaskType) {
-                if (wifiTask.getWifiTaskCallback() != null) {
-                    wifiTask.getWifiTaskCallback().onSetWifiEnabledSuccess(wifiTask.isEnabled());
-                }
-            }
-
-            @Override
-            public void onPrepareFail(int wifiTaskType, int prepareTaskFailReason) {
-                if (wifiTask.getWifiTaskCallback() != null) {
-                    wifiTask.getWifiTaskCallback().onSetWifiEnabledFail(wifiTask.isEnabled(), prepareTaskFailReason);
-                }
+            public void onPrepareFail(int prepareTaskFailReason) {
+                setWifiEnabledTask.callOnTaskFail(prepareTaskFailReason);
             }
         });
     }
@@ -349,26 +341,16 @@ public final class EasyWifi {
      */
     public static void scanWifi(final ScanWifiTask scanWifiTask) {
 
-        scanWifiPrepare(scanWifiTask.getSetWifiEnabledTimeout(), new OnPrepareCallback() {
+        scanWifiTask.callOnTaskStartRun();
+        scanWifiPrepare(scanWifiTask, new OnPrepareCallback() {
+
             @Override
-            public void onPrepareStart(int wifiTaskType) {
-                if (scanWifiTask.getWifiTaskCallback() != null) {
-                    scanWifiTask.getWifiTaskCallback().onScanWifiPreparing();
-                }
+            public void onPreparingCurrentStep(int currentStep) {
+                scanWifiTask.callOnTaskRunningCurrentStep(currentStep);
             }
 
             @Override
-            public void onPreparingNextStep(int wifiTaskType, int nextStep) {
-                if (scanWifiTask.getWifiTaskCallback() != null) {
-                    scanWifiTask.getWifiTaskCallback().onScanWifiPreparingNextStep(nextStep);
-                }
-            }
-
-            @Override
-            public void onPrepareSuccess(int wifiTaskType) {
-                if (scanWifiTask.getWifiTaskCallback() != null) {
-                    scanWifiTask.getWifiTaskCallback().onScanWifiStart();
-                }
+            public void onPrepareSuccess() {
 
                 boolean requestStartScanResult = false;
                 boolean isNeedSwitchToThroughSystemWifi = false;
@@ -439,9 +421,7 @@ public final class EasyWifi {
 
                 if (requestStartScanResult) {
 
-                    final Runnable[] scanWifiTimeoutCallback = new Runnable[1];
-
-                    final BroadcastReceiver scanResultsAvailableReceiver = new BroadcastReceiver() {
+                    scanWifiTask.setBroadcastReceiver(new BroadcastReceiver() {
 
                         @Override
                         public void onReceive(Context context, Intent intent) {
@@ -454,42 +434,38 @@ public final class EasyWifi {
                             }
 
                             sApplication.unregisterReceiver(this);
-                            sHandler.removeCallbacks(scanWifiTimeoutCallback[0]);
-                            if (scanWifiTask.getWifiTaskCallback() != null) {
-                                scanWifiTask.getWifiTaskCallback().onScanWifiSuccess();
-                            }
+                            scanWifiTask.setBroadcastReceiver(null);
+                            sHandler.removeCallbacks(scanWifiTask.getPostDelayRunnable());
+                            scanWifiTask.setPostDelayRunnable(null);
+                            scanWifiTask.callOnTaskSuccess();
                         }
-                    };
+                    });
 
                     IntentFilter intentFilter = new IntentFilter();
                     intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
-                    sApplication.registerReceiver(scanResultsAvailableReceiver, intentFilter);
+                    sApplication.registerReceiver(scanWifiTask.getBroadcastReceiver(), intentFilter);
 
                     //logic for scanWifi timeout;
-                    scanWifiTimeoutCallback[0] = new Runnable() {
+                    scanWifiTask.setPostDelayRunnable(new Runnable() {
                         @Override
                         public void run() {
-                            sApplication.unregisterReceiver(scanResultsAvailableReceiver);
-                            if (scanWifiTask.getWifiTaskCallback() != null) {
-                                scanWifiTask.getWifiTaskCallback().onScanWifiFail(TASK_FAIL_REASON_SCAN_WIFI_TIMEOUT);
-                            }
+                            scanWifiTask.setPostDelayRunnable(null);
+                            sApplication.unregisterReceiver(scanWifiTask.getBroadcastReceiver());
+                            scanWifiTask.setBroadcastReceiver(null);
+                            scanWifiTask.callOnTaskFail(TASK_FAIL_REASON_SCAN_WIFI_TIMEOUT);
                         }
-                    };
+                    });
 
-                    sHandler.postDelayed(scanWifiTimeoutCallback[0], scanWifiTask.getScanWifiTimeout());
+                    sHandler.postDelayed(scanWifiTask.getPostDelayRunnable(), scanWifiTask.getScanWifiTimeout());
 
                 } else {
-                    if (scanWifiTask.getWifiTaskCallback() != null) {
-                        scanWifiTask.getWifiTaskCallback().onScanWifiFail(TASK_FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED);
-                    }
+                    scanWifiTask.callOnTaskFail(TASK_FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED);
                 }
             }
 
             @Override
-            public void onPrepareFail(int wifiTaskType, int prepareTaskFailReason) {
-                if (scanWifiTask.getWifiTaskCallback() != null) {
-                    scanWifiTask.getWifiTaskCallback().onScanWifiFail(prepareTaskFailReason);
-                }
+            public void onPrepareFail(int prepareTaskFailReason) {
+                scanWifiTask.callOnTaskFail(prepareTaskFailReason);
             }
         });
     }
@@ -499,31 +475,20 @@ public final class EasyWifi {
      */
     public static void connectToConfiguredWifi(final ConnectToWifiTask connectToWifiTask) {
 
-        connectToWifiPrepare(connectToWifiTask.getSetWifiEnabledTimeout(), new OnPrepareCallback() {
+        connectToWifiTask.callOnTaskStartRun();
+
+        connectToWifiPrepare(connectToWifiTask, new OnPrepareCallback() {
+
             @Override
-            public void onPrepareStart(int wifiTaskType) {
-                if (connectToWifiTask.getWifiTaskCallback() != null) {
-                    connectToWifiTask.getWifiTaskCallback().onConnectToWifiPreparing();
-                }
+            public void onPreparingCurrentStep(int currentStep) {
+                connectToWifiTask.callOnTaskRunningCurrentStep(currentStep);
             }
 
             @Override
-            public void onPreparingNextStep(int wifiTaskType, int nextStep) {
-                if (connectToWifiTask.getWifiTaskCallback() != null) {
-                    connectToWifiTask.getWifiTaskCallback().onConnectToWifiPreparingNextStep(nextStep);
-                }
-            }
-
-            @Override
-            public void onPrepareSuccess(int wifiTaskType) {
-                if (connectToWifiTask.getWifiTaskCallback() != null) {
-                    connectToWifiTask.getWifiTaskCallback().onConnectToWifiStart();
-                }
+            public void onPrepareSuccess() {
 
                 if (WifiUtils.isAlreadyConnected(connectToWifiTask.getWifiConfiguration().SSID, connectToWifiTask.getWifiConfiguration().BSSID, sWifiManager)) {
-                    if (connectToWifiTask.getWifiTaskCallback() != null) {
-                        connectToWifiTask.getWifiTaskCallback().onConnectToWifiSuccess();
-                    }
+                    connectToWifiTask.callOnTaskSuccess();
                     return;
                 }
 
@@ -532,14 +497,13 @@ public final class EasyWifi {
 
                 if (requestConnectToWifiResult) {
                     //note: connect to wifi is not timely.
-                    final Runnable[] connectToWifiTimeoutCallback = new Runnable[1];
 
                     final boolean[] authenticatingIsReceived = {false};
                     final boolean[] obtainingIpAddrIsReceived = {false};
                     final boolean[] verifyingPoorLinkIsReceived = {false};
                     final boolean[] captivePortalCheckIsReceived = {false};
 
-                    final BroadcastReceiver networkStateChangedReceiver = new BroadcastReceiver() {
+                    connectToWifiTask.setBroadcastReceiver(new BroadcastReceiver() {
                         @Override
                         public void onReceive(Context context, Intent intent) {
                             NetworkInfo networkInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
@@ -562,46 +526,35 @@ public final class EasyWifi {
                                 case AUTHENTICATING:
                                     if (!authenticatingIsReceived[0]) {
                                         authenticatingIsReceived[0] = true;
-                                        if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                            connectToWifiTask.getWifiTaskCallback().onConnectToWifiConnecting(CONNECTING_DETAIL_AUTHENTICATING);
-                                        }
+                                        connectToWifiTask.callOnTaskRunningCurrentStep(CONNECTING_DETAIL_AUTHENTICATING);
                                     }
                                     break;
                                 case OBTAINING_IPADDR:
                                     if (!obtainingIpAddrIsReceived[0]) {
                                         obtainingIpAddrIsReceived[0] = true;
-                                        if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                            connectToWifiTask.getWifiTaskCallback().onConnectToWifiConnecting(CONNECTING_DETAIL_OBTAINING_IP_ADDR);
-                                        }
+                                        connectToWifiTask.callOnTaskRunningCurrentStep(CONNECTING_DETAIL_OBTAINING_IP_ADDR);
                                     }
                                     break;
                                 case VERIFYING_POOR_LINK:
                                     if (!verifyingPoorLinkIsReceived[0]) {
                                         verifyingPoorLinkIsReceived[0] = true;
                                         //Temporary shutdown (network down)
-                                        if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                            connectToWifiTask.getWifiTaskCallback().onConnectToWifiConnecting(CONNECTING_DETAIL_VERIFYING_POOR_LINK);
-                                        }
+                                        connectToWifiTask.callOnTaskRunningCurrentStep(CONNECTING_DETAIL_VERIFYING_POOR_LINK);
                                     }
                                     break;
                                 case CAPTIVE_PORTAL_CHECK:
                                     if (!captivePortalCheckIsReceived[0]) {
                                         captivePortalCheckIsReceived[0] = true;
                                         //Determine whether a browser login is required
-                                        if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                            connectToWifiTask.getWifiTaskCallback().onConnectToWifiConnecting(CONNECTING_DETAIL_CAPTIVE_PORTAL_CHECK);
-                                        }
+                                        connectToWifiTask.callOnTaskRunningCurrentStep(CONNECTING_DETAIL_CAPTIVE_PORTAL_CHECK);
                                     }
                                     break;
 
                                 //CONNECTED
                                 case CONNECTED:
                                     if (authenticatingIsReceived[0]) {
-                                        if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                            connectToWifiTask.getWifiTaskCallback().onConnectToWifiSuccess();
-                                        }
-                                        sApplication.unregisterReceiver(this);
-                                        sHandler.removeCallbacks(connectToWifiTimeoutCallback[0]);
+                                        unregisterReceiver();
+                                        connectToWifiTask.callOnTaskSuccess();
                                     }
                                     break;
 
@@ -616,27 +569,18 @@ public final class EasyWifi {
                                 //DISCONNECTED
                                 case DISCONNECTED:
                                     if (verifyingPoorLinkIsReceived[0]) {
-                                        if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                            connectToWifiTask.getWifiTaskCallback().onConnectToWifiFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_IS_POOR_LINK);
-                                        }
-                                        sApplication.unregisterReceiver(this);
-                                        sHandler.removeCallbacks(connectToWifiTimeoutCallback[0]);
+                                        unregisterReceiver();
+                                        connectToWifiTask.callOnTaskFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_IS_POOR_LINK);
                                         break;
                                     }
                                     if (obtainingIpAddrIsReceived[0]) {
-                                        if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                            connectToWifiTask.getWifiTaskCallback().onConnectToWifiFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_NOT_OBTAINED_IP_ADDR);
-                                        }
-                                        sApplication.unregisterReceiver(this);
-                                        sHandler.removeCallbacks(connectToWifiTimeoutCallback[0]);
+                                        unregisterReceiver();
+                                        connectToWifiTask.callOnTaskFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_NOT_OBTAINED_IP_ADDR);
                                         break;
                                     }
                                     if (authenticatingIsReceived[0]) {
-                                        if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                            connectToWifiTask.getWifiTaskCallback().onConnectToWifiFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING);
-                                        }
-                                        sApplication.unregisterReceiver(this);
-                                        sHandler.removeCallbacks(connectToWifiTimeoutCallback[0]);
+                                        unregisterReceiver();
+                                        connectToWifiTask.callOnTaskFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING);
                                     }
                                     break;
                                 case FAILED:
@@ -648,41 +592,43 @@ public final class EasyWifi {
                             }
 
                         }
-                    };
+
+                        private void unregisterReceiver() {
+                            sApplication.unregisterReceiver(this);
+                            connectToWifiTask.setBroadcastReceiver(null);
+                            sHandler.removeCallbacks(connectToWifiTask.getPostDelayRunnable());
+                            connectToWifiTask.setPostDelayRunnable(null);
+                        }
+                    });
 
                     IntentFilter intentFilter = new IntentFilter();
                     intentFilter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
-                    sApplication.registerReceiver(networkStateChangedReceiver, intentFilter);
+                    sApplication.registerReceiver(connectToWifiTask.getBroadcastReceiver(), intentFilter);
 
                     //logic for connect to wifi timeout;
-                    connectToWifiTimeoutCallback[0] = new Runnable() {
+                    connectToWifiTask.setPostDelayRunnable(new Runnable() {
                         @Override
                         public void run() {
-
-                            if (connectToWifiTask.getWifiTaskCallback() != null) {
-                                connectToWifiTask.getWifiTaskCallback().onConnectToWifiFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_TIMEOUT);
-                            }
-                            sApplication.unregisterReceiver(networkStateChangedReceiver);
+                            connectToWifiTask.setPostDelayRunnable(null);
+                            sApplication.unregisterReceiver(connectToWifiTask.getBroadcastReceiver());
+                            connectToWifiTask.setBroadcastReceiver(null);
+                            connectToWifiTask.callOnTaskFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_TIMEOUT);
 
                         }
-                    };
+                    });
 
-                    sHandler.postDelayed(connectToWifiTimeoutCallback[0], connectToWifiTask.getConnectToWifiTimeout());
+                    sHandler.postDelayed(connectToWifiTask.getPostDelayRunnable(), connectToWifiTask.getConnectToWifiTimeout());
 
 
                 } else {
-                    if (connectToWifiTask.getWifiTaskCallback() != null) {
-                        connectToWifiTask.getWifiTaskCallback().onConnectToWifiFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_REQUEST_NOT_BE_SATISFIED);
-                    }
+                    connectToWifiTask.callOnTaskFail(TASK_FAIL_REASON_CONNECT_TO_WIFI_REQUEST_NOT_BE_SATISFIED);
                 }
             }
 
 
             @Override
-            public void onPrepareFail(int wifiTaskType, int prepareTaskFailReason) {
-                if (connectToWifiTask.getWifiTaskCallback() != null) {
-                    connectToWifiTask.getWifiTaskCallback().onConnectToWifiFail(prepareTaskFailReason);
-                }
+            public void onPrepareFail(int prepareTaskFailReason) {
+                connectToWifiTask.callOnTaskFail(prepareTaskFailReason);
             }
         });
 
@@ -707,34 +653,24 @@ public final class EasyWifi {
      * @param getConnectionInfoTask
      */
     public static void getConnectionInfo(final GetConnectionInfoTask getConnectionInfoTask) {
-        getConnectionInfoPrepare(new OnPrepareCallback() {
+
+        getConnectionInfoTask.callOnTaskStartRun();
+
+        getConnectionInfoPrepare(getConnectionInfoTask, new OnPrepareCallback() {
+
             @Override
-            public void onPrepareStart(int wifiTaskType) {
-                if (getConnectionInfoTask.getWifiTaskCallback() != null) {
-                    getConnectionInfoTask.getWifiTaskCallback().onGetConnectionInfoPreparing();
-                }
+            public void onPreparingCurrentStep(int currentStep) {
+                getConnectionInfoTask.callOnTaskRunningCurrentStep(currentStep);
             }
 
             @Override
-            public void onPreparingNextStep(int wifiTaskType, int nextStep) {
-                if (getConnectionInfoTask.getWifiTaskCallback() != null) {
-                    getConnectionInfoTask.getWifiTaskCallback().onGetConnectionInfoPreparingNextStep(nextStep);
-                }
+            public void onPrepareSuccess() {
+                getConnectionInfoTask.callOnTaskSuccess();
             }
 
             @Override
-            public void onPrepareSuccess(int wifiTaskType) {
-                WifiInfo connectionInfo = sWifiManager.getConnectionInfo();
-                if (getConnectionInfoTask.getWifiTaskCallback() != null) {
-                    getConnectionInfoTask.getWifiTaskCallback().onGetConnectionInfoSuccess(connectionInfo);
-                }
-            }
-
-            @Override
-            public void onPrepareFail(int wifiTaskType, int prepareTaskFailReason) {
-                if (getConnectionInfoTask.getWifiTaskCallback() != null) {
-                    getConnectionInfoTask.getWifiTaskCallback().onGetConnectionInfoFail(prepareTaskFailReason);
-                }
+            public void onPrepareFail(int prepareTaskFailReason) {
+                getConnectionInfoTask.callOnTaskFail(prepareTaskFailReason);
             }
         });
 
@@ -742,23 +678,31 @@ public final class EasyWifi {
     }
 
     private static void checkIsInitialised() {
-        if (!sIsInitialised) {
-            throw new IllegalStateException("you must invoke initCore method first of all.");
+        synchronized (sLock) {
+            if (!sIsInitialised) {
+                throw new IllegalStateException("you must invoke initCore method first of all.");
+            }
         }
     }
 
     /**
      * 1.Wifi module must be enabled.
      *
-     * @param enabled
-     * @param setWifiEnabledTimeout
+     * @param setWifiEnabledTask
      * @param onPrepareCallback
      */
-    private static void setWifiEnabledTaskPrepare(boolean enabled, long setWifiEnabledTimeout,
+    private static void setWifiEnabledTaskPrepare(SetWifiEnabledTask setWifiEnabledTask,
                                                   OnPrepareCallback onPrepareCallback) {
-        onPrepareCallback.onPrepareStart(WIFI_TASK_TYPE_SET_WIFI_ENABLED);
 
-        checkAndGuideUserGrantWifiPermissionAndNext(WIFI_TASK_TYPE_SET_WIFI_ENABLED, enabled, setWifiEnabledTimeout, onPrepareCallback);
+        if (isWifiEnabled() == setWifiEnabledTask.isEnabled()) {
+            onPrepareCallback.onPrepareSuccess();
+        } else {
+            checkAndGuideUserGrantWifiPermissionAndNext(setWifiEnabledTask,
+                    setWifiEnabledTask.isEnabled(),
+                    setWifiEnabledTask.getSetWifiEnabledTimeout(),
+                    onPrepareCallback);
+        }
+
     }
 
     /**
@@ -774,18 +718,17 @@ public final class EasyWifi {
      * 2.Location module must be enabled.
      * 3.Wifi module must be enabled.
      *
-     * @param setWifiEnabledTimeout
+     * @param scanWifiTask
      * @param onPrepareCallback
      */
 
-    private static void scanWifiPrepare(long setWifiEnabledTimeout,
+    private static void scanWifiPrepare(ScanWifiTask scanWifiTask,
                                         OnPrepareCallback onPrepareCallback) {
-        onPrepareCallback.onPrepareStart(WIFI_TASK_TYPE_SCAN_WIFI);
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
-            checkAndEnableLocationAndNext(WIFI_TASK_TYPE_SCAN_WIFI, setWifiEnabledTimeout, onPrepareCallback);
+            checkAndEnableLocationAndNext(scanWifiTask, scanWifiTask.getSetWifiEnabledTimeout(), onPrepareCallback);
         } else {
-            checkWifiEnabledAndNext(WIFI_TASK_TYPE_SCAN_WIFI, true, setWifiEnabledTimeout, onPrepareCallback);
+            checkWifiEnabledAndNext(scanWifiTask, true, scanWifiTask.getSetWifiEnabledTimeout(), onPrepareCallback);
         }
     }
 
@@ -793,16 +736,15 @@ public final class EasyWifi {
     /**
      * 1.Wifi module must be enabled.
      *
-     * @param setWifiEnabledTimeout
+     * @param connectToWifiTask
      * @param onPrepareCallback
      */
-    private static void connectToWifiPrepare(long setWifiEnabledTimeout,
+    private static void connectToWifiPrepare(ConnectToWifiTask connectToWifiTask,
                                              OnPrepareCallback onPrepareCallback) {
-        onPrepareCallback.onPrepareStart(WIFI_TASK_TYPE_CONNECT_WIFI);
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
-            checkAndEnableLocationAndNext(WIFI_TASK_TYPE_CONNECT_WIFI, setWifiEnabledTimeout, onPrepareCallback);
+            checkAndEnableLocationAndNext(connectToWifiTask, connectToWifiTask.getSetWifiEnabledTimeout(), onPrepareCallback);
         } else {
-            checkAndGuideUserGrantWifiPermissionAndNext(WIFI_TASK_TYPE_CONNECT_WIFI, true, setWifiEnabledTimeout, onPrepareCallback);
+            checkAndGuideUserGrantWifiPermissionAndNext(connectToWifiTask, true, connectToWifiTask.getSetWifiEnabledTimeout(), onPrepareCallback);
         }
     }
 
@@ -812,12 +754,11 @@ public final class EasyWifi {
      *
      * @param onPrepareCallback
      */
-    private static void getConnectionInfoPrepare(OnPrepareCallback onPrepareCallback) {
-        onPrepareCallback.onPrepareStart(WIFI_TASK_TYPE_GET_CONNECTION_INFO);
+    private static void getConnectionInfoPrepare(GetConnectionInfoTask getConnectionInfoTask, OnPrepareCallback onPrepareCallback) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
-            checkAndEnableLocationAndNext(WIFI_TASK_TYPE_GET_CONNECTION_INFO, 0, onPrepareCallback);
+            checkAndEnableLocationAndNext(getConnectionInfoTask, 0, onPrepareCallback);
         } else {
-            onPrepareCallback.onPrepareSuccess(WIFI_TASK_TYPE_GET_CONNECTION_INFO);
+            onPrepareCallback.onPrepareSuccess();
         }
     }
 
@@ -827,41 +768,40 @@ public final class EasyWifi {
      * 3.Enable location.
      * 4.Request permission.
      *
-     * @param wifiTaskType
      * @param setWifiEnabledTimeout
      * @param onPrepareCallback
      */
-    private static void checkAndEnableLocationAndNext(final int wifiTaskType, final long setWifiEnabledTimeout,
+    private static void checkAndEnableLocationAndNext(final WifiTask wifiTask,
+                                                      final long setWifiEnabledTimeout,
                                                       final OnPrepareCallback onPrepareCallback) {
 
-        onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_CHECK_LOCATION_ENABLED);
+        onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_CHECK_LOCATION_ENABLED);
 
-        final Runnable nextStep = new Runnable() {
+        final Runnable currentStep = new Runnable() {
             @Override
             public void run() {
-                checkAndRequestLocationPermissionAndNext(wifiTaskType, setWifiEnabledTimeout, onPrepareCallback);
+                checkAndRequestLocationPermissionAndNext(wifiTask, setWifiEnabledTimeout, onPrepareCallback);
             }
         };
 
         if (!LocationUtils.checkLocationModuleIsExist()) {
-            onPrepareCallback.onPrepareFail(wifiTaskType, TASK_FAIL_REASON_LOCATION_MODULE_NOT_EXIST);
+            onPrepareCallback.onPrepareFail(TASK_FAIL_REASON_LOCATION_MODULE_NOT_EXIST);
         } else if (!LocationUtils.isLocationEnabled()) {
-            onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_LOCATION_ENABLE);
-            IntentManager.gotoUserActionBridgeActivity(wifiTaskType,
-                    UserActionBridgeActivity.STEP_CODE_ENABLE_LOCATION_MODULE,
+            onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_SET_LOCATION_ENABLED);
+            IntentManager.gotoUserActionBridgeActivity(UserActionBridgeActivity.STEP_CODE_ENABLE_LOCATION_MODULE,
                     new UserActionBridgeActivity.OnUserDoneCallback() {
                         @Override
                         public void onUserDoneIsWeExcepted(int stepCode) {
-                            nextStep.run();
+                            currentStep.run();
                         }
 
                         @Override
                         public void onUserDoneIsNotWeExcepted(int stepCode) {
-                            onPrepareCallback.onPrepareFail(wifiTaskType, TASK_FAIL_REASON_LOCATION_MODULE_DISABLE);
+                            onPrepareCallback.onPrepareFail(TASK_FAIL_REASON_LOCATION_MODULE_DISABLE);
                         }
                     });
         } else {
-            nextStep.run();
+            currentStep.run();
         }
     }
 
@@ -870,45 +810,46 @@ public final class EasyWifi {
      * 1.Check app is has permission about location operation.
      * 2.If app doesn't have permission, request.
      *
-     * @param wifiTaskType
+     * @param wifiTask
      * @param setWifiEnabledTimeout
      * @param onPrepareCallback
      */
-    private static void checkAndRequestLocationPermissionAndNext(final int wifiTaskType,
+    private static void checkAndRequestLocationPermissionAndNext(final WifiTask wifiTask,
                                                                  final long setWifiEnabledTimeout,
                                                                  final OnPrepareCallback onPrepareCallback) {
-        onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_CHECK_LOCATION_PERMISSION);
+        onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_CHECK_LOCATION_PERMISSION);
 
         boolean isHasLocationPermission = LocationUtils.checkHasLocationPermissions();
 
-        final Runnable nextStep = new Runnable() {
+        final Runnable currentStep = new Runnable() {
             @Override
             public void run() {
-                if (WIFI_TASK_TYPE_SCAN_WIFI == wifiTaskType) {
-                    checkWifiEnabledAndNext(wifiTaskType, true, setWifiEnabledTimeout, onPrepareCallback);
-                } else if (WIFI_TASK_TYPE_GET_CONNECTION_INFO == wifiTaskType) {
-                    onPrepareCallback.onPrepareSuccess(wifiTaskType);
-                } else if (WIFI_TASK_TYPE_CONNECT_WIFI == wifiTaskType) {
-                    checkAndGuideUserGrantWifiPermissionAndNext(wifiTaskType, true, setWifiEnabledTimeout, onPrepareCallback);
+                if (wifiTask instanceof ScanWifiTask) {
+                    checkWifiEnabledAndNext(wifiTask, true, setWifiEnabledTimeout, onPrepareCallback);
+                } else if (wifiTask instanceof GetConnectionInfoTask) {
+                    onPrepareCallback.onPrepareSuccess();
+                } else if (wifiTask instanceof ConnectToWifiTask) {
+                    checkAndGuideUserGrantWifiPermissionAndNext(wifiTask, true, setWifiEnabledTimeout, onPrepareCallback);
                 }
+
             }
         };
 
         if (isHasLocationPermission) {
-            nextStep.run();
+            currentStep.run();
         } else {
 
-            onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_REQUEST_LOCATION_PERMISSION);
-            IntentManager.gotoUserActionBridgeActivity(wifiTaskType,
+            onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_REQUEST_LOCATION_PERMISSION);
+            IntentManager.gotoUserActionBridgeActivity(
                     UserActionBridgeActivity.STEP_CODE_REQUEST_LOCATION_PERMISSION, new UserActionBridgeActivity.OnUserDoneCallback() {
                         @Override
                         public void onUserDoneIsWeExcepted(int stepCode) {
-                            nextStep.run();
+                            currentStep.run();
                         }
 
                         @Override
                         public void onUserDoneIsNotWeExcepted(int stepCode) {
-                            onPrepareCallback.onPrepareFail(wifiTaskType, TASK_FAIL_REASON_NOT_HAS_LOCATION_PERMISSIONS);
+                            onPrepareCallback.onPrepareFail(TASK_FAIL_REASON_NOT_HAS_LOCATION_PERMISSIONS);
                         }
                     });
         }
@@ -918,16 +859,16 @@ public final class EasyWifi {
      * 1.check wifi module is enabled.
      * 2.if disable, invoke checkAndGuideUserGrantWifiPermissionAndNext;
      *
-     * @param wifiTaskType
+     * @param wifiTask
      * @param setWifiEnabledTimeout
      * @param onPrepareCallback
      */
-    private static void checkWifiEnabledAndNext(int wifiTaskType, boolean enabled, long setWifiEnabledTimeout, OnPrepareCallback onPrepareCallback) {
-        onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_CHECK_WIFI_ENABLED);
+    private static void checkWifiEnabledAndNext(WifiTask wifiTask, boolean enabled, long setWifiEnabledTimeout, OnPrepareCallback onPrepareCallback) {
+        onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_CHECK_WIFI_ENABLED);
         if (isWifiEnabled() != enabled) {
-            checkAndGuideUserGrantWifiPermissionAndNext(wifiTaskType, enabled, setWifiEnabledTimeout, onPrepareCallback);
+            checkAndGuideUserGrantWifiPermissionAndNext(wifiTask, enabled, setWifiEnabledTimeout, onPrepareCallback);
         } else {
-            onPrepareCallback.onPrepareSuccess(wifiTaskType);
+            onPrepareCallback.onPrepareSuccess();
         }
     }
 
@@ -940,163 +881,124 @@ public final class EasyWifi {
      * <p>
      * 3.Set wifi enabled.
      *
-     * @param wifiTaskType
+     * @param wifiTask
      * @param enabled
      * @param setWifiEnabledTimeout
      * @param onPrepareCallback
      */
-    private static void checkAndGuideUserGrantWifiPermissionAndNext(final int wifiTaskType,
+    private static void checkAndGuideUserGrantWifiPermissionAndNext(final WifiTask wifiTask,
                                                                     final boolean enabled,
                                                                     final long setWifiEnabledTimeout,
                                                                     final OnPrepareCallback onPrepareCallback) {
 
-        onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_CHECK_WIFI_PERMISSION);
+        onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_CHECK_WIFI_PERMISSION);
 
-        final Runnable nextStep = new Runnable() {
+        final Runnable currentStep = new Runnable() {
             @Override
             public void run() {
-                setWifiEnabled(enabled, wifiTaskType, setWifiEnabledTimeout, onPrepareCallback);
+                if (isWifiEnabled() != enabled) {
+                    setWifiEnabledInternal(wifiTask, enabled, setWifiEnabledTimeout, onPrepareCallback);
+                } else {
+                    onPrepareCallback.onPrepareSuccess();
+                }
             }
         };
 
         if (!WifiUtils.checkWifiModuleIsExist(sWifiManager)) {
-            onPrepareCallback.onPrepareFail(wifiTaskType, TASK_FAIL_REASON_WIFI_MODULE_NOT_EXIST);
+            onPrepareCallback.onPrepareFail(TASK_FAIL_REASON_WIFI_MODULE_NOT_EXIST);
         } else if (!WifiUtils.checkHasChangeWifiStatePermission(sWifiManager)) {
-            onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION);
-            IntentManager.gotoUserActionBridgeActivity(wifiTaskType,
-                    UserActionBridgeActivity.STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION,
+            onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION);
+            IntentManager.gotoUserActionBridgeActivity(UserActionBridgeActivity.STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION,
                     new UserActionBridgeActivity.OnUserDoneCallback() {
                         @Override
                         public void onUserDoneIsWeExcepted(int stepCode) {
-                            nextStep.run();
+                            currentStep.run();
                         }
 
                         @Override
                         public void onUserDoneIsNotWeExcepted(int stepCode) {
-                            onPrepareCallback.onPrepareFail(wifiTaskType, TASK_FAIL_REASON_NOT_HAS_WIFI_PERMISSION);
+                            onPrepareCallback.onPrepareFail(TASK_FAIL_REASON_NOT_HAS_WIFI_PERMISSION);
                         }
                     });
         } else {
-            nextStep.run();
+            currentStep.run();
         }
-    }
-
-    /**
-     * @param enabled
-     * @param wifiTaskType
-     * @param setWifiEnabledTimeout
-     * @param onPrepareCallback
-     */
-    private static void setWifiEnabled(boolean enabled,
-                                       final int wifiTaskType,
-                                       long setWifiEnabledTimeout,
-                                       final OnPrepareCallback onPrepareCallback) {
-        onPrepareCallback.onPreparingNextStep(wifiTaskType, PREPARING_NEXT_STEP_SET_WIFI_ENABLED);
-        setWifiEnabled(enabled, setWifiEnabledTimeout, new OnSetWifiEnabledInternalCallback() {
-
-            @Override
-            public void onSetWifiEnabledInternalSuccess() {
-                onPrepareCallback.onPrepareSuccess(wifiTaskType);
-            }
-
-            @Override
-            public void onSetWifiEnabledInternalFail(int setWifiEnabledFailReason) {
-                onPrepareCallback.onPrepareFail(wifiTaskType, setWifiEnabledFailReason);
-            }
-        });
     }
 
     /**
      * 1.Check wifi is enable.
      * 2.Set wifi enabled.
      *
+     * @param wifiTask
      * @param enabled
      * @param setWifiEnabledTimeout
-     * @param onSetWifiEnabledInternalCallback
+     * @param onPrepareCallback
      */
-    private static void setWifiEnabled(final boolean enabled,
-                                       long setWifiEnabledTimeout,
-                                       final OnSetWifiEnabledInternalCallback onSetWifiEnabledInternalCallback) {
-        if (isWifiEnabled() != enabled) {
+    private static void setWifiEnabledInternal(final WifiTask wifiTask,
+                                               boolean enabled,
+                                               long setWifiEnabledTimeout,
+                                               final OnPrepareCallback onPrepareCallback) {
+        onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_SET_WIFI_ENABLED);
 
-            boolean requestSetWifiEnabledResult = sWifiManager.setWifiEnabled(enabled);
-            if (requestSetWifiEnabledResult) {
 
-                final Runnable[] setWifiEnabledTimeoutCallback = new Runnable[1];
-                //note: The operation of  wifi is not timely.
-                final int expectedState = enabled ?
-                        WifiManager.WIFI_STATE_ENABLED : WifiManager.WIFI_STATE_DISABLED;
+        boolean requestSetWifiEnabledResult = sWifiManager.setWifiEnabled(enabled);
+        if (requestSetWifiEnabledResult) {
 
-                final BroadcastReceiver wifiStateChangedReceiver = new BroadcastReceiver() {
+            //note: The operation of  wifi is not timely.
+            final int expectedState = enabled ?
+                    WifiManager.WIFI_STATE_ENABLED : WifiManager.WIFI_STATE_DISABLED;
 
-                    @Override
-                    public void onReceive(Context context, Intent intent) {
-                        if (expectedState == intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,
-                                WifiManager.WIFI_STATE_UNKNOWN)) {
-                            onSetWifiEnabledInternalCallback.onSetWifiEnabledInternalSuccess();
-                            sApplication.unregisterReceiver(this);
-                            sHandler.removeCallbacks(setWifiEnabledTimeoutCallback[0]);
+            wifiTask.setBroadcastReceiver(new BroadcastReceiver() {
 
-                        }
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (expectedState == intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,
+                            WifiManager.WIFI_STATE_UNKNOWN)) {
+                        sApplication.unregisterReceiver(this);
+                        wifiTask.setBroadcastReceiver(null);
+                        sHandler.removeCallbacks(wifiTask.getPostDelayRunnable());
+                        wifiTask.setPostDelayRunnable(null);
+                        onPrepareCallback.onPrepareSuccess();
                     }
-                };
-                IntentFilter intentFilter = new IntentFilter();
-                intentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-                sApplication.registerReceiver(wifiStateChangedReceiver, intentFilter);
+                }
+            });
+            IntentFilter intentFilter = new IntentFilter();
+            intentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
+            sApplication.registerReceiver(wifiTask.getBroadcastReceiver(), intentFilter);
 
-                //logic for setWifiEnabledTimeout;
-                setWifiEnabledTimeoutCallback[0] = new Runnable() {
-                    @Override
-                    public void run() {
-                        onSetWifiEnabledInternalCallback.onSetWifiEnabledInternalFail(TASK_FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT);
-                        sApplication.unregisterReceiver(wifiStateChangedReceiver);
-                    }
-                };
-                sHandler.postDelayed(setWifiEnabledTimeoutCallback[0], setWifiEnabledTimeout);
+            //logic for setWifiEnabledTimeout;
+            wifiTask.setPostDelayRunnable(new Runnable() {
+                @Override
+                public void run() {
+                    wifiTask.setPostDelayRunnable(null);
+                    sApplication.unregisterReceiver(wifiTask.getBroadcastReceiver());
+                    wifiTask.setBroadcastReceiver(null);
+                    onPrepareCallback.onPrepareFail(TASK_FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT);
+                }
+            });
+            sHandler.postDelayed(wifiTask.getPostDelayRunnable(), setWifiEnabledTimeout);
 
-            } else {
-                onSetWifiEnabledInternalCallback.onSetWifiEnabledInternalFail(TASK_FAIL_REASON_SET_WIFI_ENABLED_REQUEST_NOT_BE_SATISFIED);
-            }
         } else {
-            onSetWifiEnabledInternalCallback.onSetWifiEnabledInternalSuccess();
+            onPrepareCallback.onPrepareFail(TASK_FAIL_REASON_SET_WIFI_ENABLED_REQUEST_NOT_BE_SATISFIED);
         }
     }
 
     private interface OnPrepareCallback {
 
         /**
-         * @param wifiTaskType
+         * @param currentStep
          */
-        void onPrepareStart(int wifiTaskType);
-
-        /**
-         * @param wifiTaskType
-         * @param nextStep
-         */
-        void onPreparingNextStep(int wifiTaskType, int nextStep);
-
-        /**
-         * @param wifiTaskType
-         */
-        void onPrepareSuccess(int wifiTaskType);
-
-        /**
-         * @param wifiTaskType
-         * @param prepareTaskFailReason
-         */
-        void onPrepareFail(int wifiTaskType, int prepareTaskFailReason);
-    }
-
-    private interface OnSetWifiEnabledInternalCallback {
+        void onPreparingCurrentStep(int currentStep);
 
         /**
          *
          */
-        void onSetWifiEnabledInternalSuccess();
+        void onPrepareSuccess();
 
         /**
-         * @param setWifiEnabledFailReason
+         * @param prepareTaskFailReason
          */
-        void onSetWifiEnabledInternalFail(int setWifiEnabledFailReason);
+        void onPrepareFail(int prepareTaskFailReason);
     }
+
 }

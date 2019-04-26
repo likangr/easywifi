@@ -1,8 +1,8 @@
 package com.likang.easywifi.lib.core.task;
 
 import android.net.wifi.ScanResult;
-import android.net.wifi.WifiInfo;
 import android.os.Parcel;
+import android.text.TextUtils;
 
 import com.likang.easywifi.lib.EasyWifi;
 import com.likang.easywifi.lib.util.WifiUtils;
@@ -10,28 +10,53 @@ import com.likang.easywifi.lib.util.WifiUtils;
 /**
  * @author likangren
  */
-public class CheckIsAlreadyConnectedTask extends WifiTask<CheckIsAlreadyConnectedTask.OnCheckIsAlreadyConnectedCallback> {
+public class CheckIsAlreadyConnectedTask extends WifiTask {
 
     private String mSsid;
     private String mBssid;
     private ScanResult mScanResult;
-    private GetConnectionInfoTask mGetConnectionInfoTask;
+    private boolean mIsAlreadyConnected;
+    private GetConnectionInfoTask mGetConnectionInfoTask = new GetConnectionInfoTask(new WifiTaskCallback<GetConnectionInfoTask>() {
+        @Override
+        public void onTaskStartRun(GetConnectionInfoTask wifiTask) {
+            callOnTaskStartRun();
+        }
 
-    public CheckIsAlreadyConnectedTask(String ssid, String bssid, OnCheckIsAlreadyConnectedCallback onCheckIsAlreadyConnectedCallbackCallback) {
-        super(onCheckIsAlreadyConnectedCallbackCallback);
+        @Override
+        public void onTaskRunningCurrentStep(GetConnectionInfoTask wifiTask) {
+            callOnTaskRunningCurrentStep(wifiTask.mRunningCurrentStep);
+        }
+
+        @Override
+        public void onTaskSuccess(GetConnectionInfoTask wifiTask) {
+            mIsAlreadyConnected = WifiUtils.isAlreadyConnected(mSsid, mBssid, EasyWifi.getWifiManager());
+            callOnTaskSuccess();
+        }
+
+        @Override
+        public void onTaskFail(GetConnectionInfoTask wifiTask) {
+            callOnTaskFail(wifiTask.getFailReason());
+        }
+    });
+
+
+    public CheckIsAlreadyConnectedTask(String ssid, String bssid, WifiTaskCallback wifiTaskCallback) {
+        super(wifiTaskCallback);
         mSsid = ssid;
         mBssid = bssid;
     }
 
-    public CheckIsAlreadyConnectedTask(ScanResult scanResult, OnCheckIsAlreadyConnectedCallback onCheckIsAlreadyConnectedCallbackCallback) {
-        this(scanResult.SSID, scanResult.BSSID, onCheckIsAlreadyConnectedCallbackCallback);
+    public CheckIsAlreadyConnectedTask(ScanResult scanResult, WifiTaskCallback wifiTaskCallback) {
+        this(scanResult.SSID, scanResult.BSSID, wifiTaskCallback);
         mScanResult = scanResult;
     }
 
     protected CheckIsAlreadyConnectedTask(Parcel in) {
+        super(in);
         mSsid = in.readString();
         mBssid = in.readString();
         mScanResult = in.readParcelable(ScanResult.class.getClassLoader());
+        mIsAlreadyConnected = in.readByte() == 1;
     }
 
 
@@ -67,6 +92,35 @@ public class CheckIsAlreadyConnectedTask extends WifiTask<CheckIsAlreadyConnecte
         mGetConnectionInfoTask = getConnectionInfoTask;
     }
 
+    public boolean getIsAlreadyConnected() {
+        return mIsAlreadyConnected;
+    }
+
+    public void setIsAlreadyConnected(boolean isAlreadyConnected) {
+        mIsAlreadyConnected = isAlreadyConnected;
+    }
+
+    @Override
+    void checkParams() {
+        if (TextUtils.isEmpty(mSsid)) {
+            throw new IllegalArgumentException("Ssid can not be empty!");
+        }
+    }
+
+    @Override
+    public void run() {
+        super.run();
+
+        EasyWifi.executeTask(mGetConnectionInfoTask);
+
+    }
+
+    @Override
+    public void cancel() {
+        super.cancel();
+        EasyWifi.cancelTask(mGetConnectionInfoTask);
+    }
+
     public static final Creator<CheckIsAlreadyConnectedTask> CREATOR = new Creator<CheckIsAlreadyConnectedTask>() {
         @Override
         public CheckIsAlreadyConnectedTask createFromParcel(Parcel in) {
@@ -79,58 +133,12 @@ public class CheckIsAlreadyConnectedTask extends WifiTask<CheckIsAlreadyConnecte
         }
     };
 
-
-    @Override
-    public void run() {
-        super.run();
-
-        mGetConnectionInfoTask = new GetConnectionInfoTask(new GetConnectionInfoTask.OnGetConnectionInfoCallback() {
-            @Override
-            public void onGetConnectionInfoPreparing() {
-                if (mWifiTaskCallback != null) {
-                    mWifiTaskCallback.onCheckIsAlreadyConnectedCallbackPreparing();
-                }
-            }
-
-            @Override
-            public void onGetConnectionInfoPreparingNextStep(int nextStep) {
-                if (mWifiTaskCallback != null) {
-                    mWifiTaskCallback.onCheckIsAlreadyConnectedCallbackPreparingNextStep(nextStep);
-                }
-            }
-
-            @Override
-            public void onGetConnectionInfoSuccess(WifiInfo wifiInfo) {
-                if (mWifiTaskCallback != null) {
-                    if (mScanResult == null) {
-                        mWifiTaskCallback.onCheckIsAlreadyConnectedCallbackSuccess(WifiUtils.isAlreadyConnected(mSsid, mBssid, EasyWifi.getWifiManager()), mSsid, mBssid);
-                    } else {
-                        mWifiTaskCallback.onCheckIsAlreadyConnectedCallbackSuccess(WifiUtils.isAlreadyConnected(mSsid, mBssid, EasyWifi.getWifiManager()), mScanResult);
-                    }
-                }
-            }
-
-            @Override
-            public void onGetConnectionInfoFail(int getConnectionFailReason) {
-                if (mWifiTaskCallback != null) {
-                    mWifiTaskCallback.onCheckIsAlreadyConnectedCallbackFail(getConnectionFailReason);
-                }
-            }
-        });
-        EasyWifi.executeTask(mGetConnectionInfoTask);
-
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(mSsid);
         dest.writeString(mBssid);
         dest.writeParcelable(mScanResult, flags);
+        dest.writeByte((byte) (mIsAlreadyConnected ? 1 : 0));
     }
 
     @Override
@@ -139,26 +147,12 @@ public class CheckIsAlreadyConnectedTask extends WifiTask<CheckIsAlreadyConnecte
                 "mSsid='" + mSsid + '\'' +
                 ", mBssid='" + mBssid + '\'' +
                 ", mScanResult=" + mScanResult +
+                ", mIsAlreadyConnected=" + mIsAlreadyConnected +
+                ", mGetConnectionInfoTask=" + mGetConnectionInfoTask +
+                ", mWifiTaskCallback=" + mWifiTaskCallback +
+                ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mFailReason=" + mFailReason +
+                ", mCurrentStatus=" + mCurrentStatus +
                 '}';
     }
-
-    @Override
-    public void cancel() {
-        super.cancel();
-    }
-
-    public interface OnCheckIsAlreadyConnectedCallback extends WifiTaskCallback {
-
-        void onCheckIsAlreadyConnectedCallbackPreparing();
-
-        void onCheckIsAlreadyConnectedCallbackPreparingNextStep(int nextStep);
-
-        void onCheckIsAlreadyConnectedCallbackSuccess(boolean isAlreadyConnected, String ssid, String bssid);
-
-        void onCheckIsAlreadyConnectedCallbackSuccess(boolean isAlreadyConnected, ScanResult scanResult);
-
-        void onCheckIsAlreadyConnectedCallbackFail(int getConnectionFailReason);
-
-    }
-
 }

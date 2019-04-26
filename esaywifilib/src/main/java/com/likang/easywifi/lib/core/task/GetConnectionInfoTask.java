@@ -8,15 +8,39 @@ import com.likang.easywifi.lib.EasyWifi;
 /**
  * @author likangren
  */
-public class GetConnectionInfoTask extends WifiTask<GetConnectionInfoTask.OnGetConnectionInfoCallback> {
+public class GetConnectionInfoTask extends WifiTask {
 
+    private WifiInfo mWifiInfo;
 
-    public GetConnectionInfoTask(OnGetConnectionInfoCallback onGetConnectionInfoCallback) {
-        super(onGetConnectionInfoCallback);
-
+    public GetConnectionInfoTask(WifiTaskCallback wifiTaskCallback) {
+        super(wifiTaskCallback);
     }
 
     protected GetConnectionInfoTask(Parcel in) {
+        super(in);
+        in.readParcelable(WifiInfo.class.getClassLoader());
+    }
+
+    public WifiInfo getWifiInfo() {
+        return mWifiInfo;
+    }
+
+
+    @Override
+    void checkParams() {
+
+    }
+
+    @Override
+    public void run() {
+        super.run();
+        EasyWifi.getConnectionInfo(this);
+    }
+
+    @Override
+    public void callOnTaskSuccess() {
+        mWifiInfo = EasyWifi.getWifiManager().getConnectionInfo();
+        super.callOnTaskSuccess();
     }
 
     public static final Creator<GetConnectionInfoTask> CREATOR = new Creator<GetConnectionInfoTask>() {
@@ -32,40 +56,19 @@ public class GetConnectionInfoTask extends WifiTask<GetConnectionInfoTask.OnGetC
     };
 
     @Override
-    public void run() {
-        super.run();
-        EasyWifi.getConnectionInfo(this);
-    }
-
-    @Override
-    public void cancel() {
-        super.cancel();
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
     public void writeToParcel(Parcel dest, int flags) {
+        super.writeToParcel(dest, flags);
+        dest.writeParcelable(mWifiInfo, flags);
     }
 
     @Override
     public String toString() {
-        return "GetConnectionInfoTask{}";
+        return "GetConnectionInfoTask{" +
+                "mWifiInfo=" + mWifiInfo +
+                ", mWifiTaskCallback=" + mWifiTaskCallback +
+                ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mFailReason=" + mFailReason +
+                ", mCurrentStatus=" + mCurrentStatus +
+                '}';
     }
-
-    public interface OnGetConnectionInfoCallback extends WifiTaskCallback {
-
-        void onGetConnectionInfoPreparing();
-
-        void onGetConnectionInfoPreparingNextStep(int nextStep);
-
-        void onGetConnectionInfoSuccess(WifiInfo wifiInfo);
-
-        void onGetConnectionInfoFail(int getConnectionFailReason);
-
-    }
-
 }

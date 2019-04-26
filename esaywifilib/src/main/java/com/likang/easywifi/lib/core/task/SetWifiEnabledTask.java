@@ -7,24 +7,25 @@ import com.likang.easywifi.lib.EasyWifi;
 /**
  * @author likangren
  */
-public class SetWifiEnabledTask extends WifiTask<SetWifiEnabledTask.OnSetWifiEnabledCallback> {
+public class SetWifiEnabledTask extends WifiTask {
 
     private boolean mEnabled;
     private long mSetWifiEnabledTimeout;
 
     public SetWifiEnabledTask(boolean enabled,
                               long setWifiEnabledTimeout,
-                              OnSetWifiEnabledCallback onSetWifiEnabledCallback) {
+                              WifiTaskCallback wifiTaskCallback) {
+        super(wifiTaskCallback);
         mEnabled = enabled;
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
-        mWifiTaskCallback = onSetWifiEnabledCallback;
-
     }
 
     protected SetWifiEnabledTask(Parcel in) {
+        super(in);
         mEnabled = in.readByte() == 1;
         mSetWifiEnabledTimeout = in.readLong();
     }
+
 
     public boolean isEnabled() {
         return mEnabled;
@@ -42,6 +43,19 @@ public class SetWifiEnabledTask extends WifiTask<SetWifiEnabledTask.OnSetWifiEna
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
     }
 
+    @Override
+    void checkParams() {
+        if (mSetWifiEnabledTimeout < 0) {
+            throw new IllegalArgumentException("SetWifiEnabledTimeout must more than 0!");
+        }
+    }
+
+    @Override
+    public void run() {
+        super.run();
+        EasyWifi.setWifiEnabled(this);
+    }
+
     public static final Creator<SetWifiEnabledTask> CREATOR = new Creator<SetWifiEnabledTask>() {
         @Override
         public SetWifiEnabledTask createFromParcel(Parcel in) {
@@ -55,50 +69,21 @@ public class SetWifiEnabledTask extends WifiTask<SetWifiEnabledTask.OnSetWifiEna
     };
 
     @Override
-    public void run() {
-        super.run();
-
-        EasyWifi.setWifiEnabled(this);
-
-    }
-
-    @Override
-    public void cancel() {
-        super.cancel();
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
     public void writeToParcel(Parcel dest, int flags) {
+        super.writeToParcel(dest, flags);
         dest.writeByte((byte) (mEnabled ? 1 : 0));
         dest.writeLong(mSetWifiEnabledTimeout);
     }
-
 
     @Override
     public String toString() {
         return "SetWifiEnabledTask{" +
                 "mEnabled=" + mEnabled +
                 ", mSetWifiEnabledTimeout=" + mSetWifiEnabledTimeout +
+                ", mWifiTaskCallback=" + mWifiTaskCallback +
+                ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mFailReason=" + mFailReason +
+                ", mCurrentStatus=" + mCurrentStatus +
                 '}';
     }
-
-    public interface OnSetWifiEnabledCallback extends WifiTaskCallback {
-
-        void onSetWifiEnabledPreparing(boolean enabled);
-
-        void onSetWifiEnabledPreparingNextStep(boolean enabled, int nextStep);
-
-        void onSetWifiEnabledStart(boolean enabled);
-
-        void onSetWifiEnabledSuccess(boolean enabled);
-
-        void onSetWifiEnabledFail(boolean enabled, int setWifiEnabledFailReason);
-    }
-
-
 }

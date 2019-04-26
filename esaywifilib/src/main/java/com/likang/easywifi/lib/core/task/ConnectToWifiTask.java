@@ -3,6 +3,7 @@ package com.likang.easywifi.lib.core.task;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.os.Parcel;
+import android.text.TextUtils;
 
 import com.likang.easywifi.lib.EasyWifi;
 import com.likang.easywifi.lib.util.WifiEncryptionScheme;
@@ -10,7 +11,7 @@ import com.likang.easywifi.lib.util.WifiEncryptionScheme;
 /**
  * @author likangren
  */
-public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWifiCallback> {
+public class ConnectToWifiTask extends WifiTask {
 
     private long mSetWifiEnabledTimeout;
     private String mSsid;
@@ -19,6 +20,8 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
     private String mEncryptionScheme;
     private long mConnectToWifiTimeout;
     private WifiConfiguration mWifiConfiguration;
+    private boolean mIsConnectToConfiguredWifi;
+
 
     public ConnectToWifiTask(long setWifiEnabledTimeout,
                              String ssid,
@@ -26,8 +29,9 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
                              String password,
                              String encryptionScheme,
                              long connectToWifiTimeout,
-                             ConnectToWifiTask.OnConnectToWifiCallback onConnectToWifiCallback) {
-        super(onConnectToWifiCallback);
+                             WifiTaskCallback wifiTaskCallback) {
+        super(wifiTaskCallback);
+        mIsConnectToConfiguredWifi = false;
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
         mSsid = ssid;
         mBssid = bssid;
@@ -40,21 +44,26 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
                              ScanResult scanResult,
                              String password,
                              long connectToWifiTimeout,
-                             ConnectToWifiTask.OnConnectToWifiCallback onConnectToWifiCallback) {
+                             WifiTaskCallback wifiTaskCallback) {
         this(setWifiEnabledTimeout,
                 scanResult.SSID,
                 scanResult.BSSID,
                 password,
                 WifiEncryptionScheme.getEncryptionSchemeByScanResult(scanResult),
                 connectToWifiTimeout,
-                onConnectToWifiCallback);
+                wifiTaskCallback);
     }
 
     public ConnectToWifiTask(long setWifiEnabledTimeout,
                              long connectToWifiTimeout,
                              WifiConfiguration wifiConfiguration,
-                             ConnectToWifiTask.OnConnectToWifiCallback onConnectToWifiCallback) {
-        super(onConnectToWifiCallback);
+                             WifiTaskCallback wifiTaskCallback) {
+
+        super(wifiTaskCallback);
+        mIsConnectToConfiguredWifi = true;
+        if (wifiConfiguration == null) {
+            return;
+        }
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
         mSsid = wifiConfiguration.SSID;
         mBssid = wifiConfiguration.BSSID;
@@ -67,22 +76,27 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
                              String ssid,
                              String bssid,
                              long connectToWifiTimeout,
-                             ConnectToWifiTask.OnConnectToWifiCallback onConnectToWifiCallback) {
-        this(setWifiEnabledTimeout, connectToWifiTimeout, EasyWifi.getConfiguredWifiConfiguration(ssid, bssid), onConnectToWifiCallback);
+                             WifiTaskCallback wifiTaskCallback) {
+
+        this(setWifiEnabledTimeout,
+                connectToWifiTimeout,
+                EasyWifi.getConfiguredWifiConfiguration(ssid, bssid),
+                wifiTaskCallback);
     }
 
     public ConnectToWifiTask(long setWifiEnabledTimeout,
                              ScanResult scanResult,
                              long connectToWifiTimeout,
-                             ConnectToWifiTask.OnConnectToWifiCallback onConnectToWifiCallback) {
+                             WifiTaskCallback wifiTaskCallback) {
         this(setWifiEnabledTimeout,
                 scanResult.SSID,
                 scanResult.BSSID,
                 connectToWifiTimeout,
-                onConnectToWifiCallback);
+                wifiTaskCallback);
     }
 
     protected ConnectToWifiTask(Parcel in) {
+        super(in);
         mSetWifiEnabledTimeout = in.readLong();
         mSsid = in.readString();
         mBssid = in.readString();
@@ -90,6 +104,7 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
         mEncryptionScheme = in.readString();
         mConnectToWifiTimeout = in.readLong();
         mWifiConfiguration = in.readParcelable(WifiConfiguration.class.getClassLoader());
+        mIsConnectToConfiguredWifi = in.readByte() == 1;
     }
 
     public long getSetWifiEnabledTimeout() {
@@ -99,7 +114,6 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
     public void setSetWifiEnabledTimeout(long setWifiEnabledTimeout) {
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
     }
-
 
     public String getSsid() {
         return mSsid;
@@ -149,6 +163,52 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
         mWifiConfiguration = wifiConfiguration;
     }
 
+
+    @Override
+    void checkParams() {
+
+        if (mSetWifiEnabledTimeout < 0) {
+            throw new IllegalArgumentException("SetWifiEnabledTimeout must more than 0!");
+        }
+        if (mConnectToWifiTimeout < 0) {
+            throw new IllegalArgumentException("ConnectToWifiTimeout must more than 0!");
+        }
+
+        if (mIsConnectToConfiguredWifi) {
+            if (mWifiConfiguration == null) {
+                throw new IllegalArgumentException("Your network information has not been configured or null");
+            }
+
+            if (mWifiConfiguration.networkId == -1) {
+                throw new IllegalArgumentException("WifiConfiguration is have not been configured!");
+            }
+
+        } else {
+            if (TextUtils.isEmpty(mSsid)) {
+                throw new IllegalArgumentException("Ssid can not be empty!");
+            }
+
+            if (TextUtils.isEmpty(mPassword)) {
+                throw new IllegalArgumentException("Password can not be empty!");
+            }
+
+            if (TextUtils.isEmpty(mEncryptionScheme)) {
+                throw new IllegalArgumentException("mEncryptionScheme can not be empty!");
+            }
+        }
+    }
+
+    @Override
+    public void run() {
+        super.run();
+        if (mIsConnectToConfiguredWifi) {
+            EasyWifi.connectToConfiguredWifi(this);
+        } else {
+            EasyWifi.connectToUnConfiguredWifi(this);
+        }
+    }
+
+
     public static final Creator<ConnectToWifiTask> CREATOR = new Creator<ConnectToWifiTask>() {
         @Override
         public ConnectToWifiTask createFromParcel(Parcel in) {
@@ -162,27 +222,8 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
     };
 
     @Override
-    public void run() {
-        super.run();
-        if (mWifiConfiguration != null) {
-            EasyWifi.connectToConfiguredWifi(this);
-        } else {
-            EasyWifi.connectToUnConfiguredWifi(this);
-        }
-    }
-
-    @Override
-    public void cancel() {
-        super.cancel();
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
     public void writeToParcel(Parcel dest, int flags) {
+        super.writeToParcel(dest, flags);
         dest.writeLong(mSetWifiEnabledTimeout);
         dest.writeString(mSsid);
         dest.writeString(mBssid);
@@ -190,6 +231,7 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
         dest.writeString(mEncryptionScheme);
         dest.writeLong(mConnectToWifiTimeout);
         dest.writeParcelable(mWifiConfiguration, flags);
+        dest.writeByte((byte) (mIsConnectToConfiguredWifi ? 1 : 0));
     }
 
     @Override
@@ -202,24 +244,12 @@ public class ConnectToWifiTask extends WifiTask<ConnectToWifiTask.OnConnectToWif
                 ", mEncryptionScheme='" + mEncryptionScheme + '\'' +
                 ", mConnectToWifiTimeout=" + mConnectToWifiTimeout +
                 ", mWifiConfiguration=" + mWifiConfiguration +
+                ", mIsConnectToConfiguredWifi=" + mIsConnectToConfiguredWifi +
+                ", mWifiTaskCallback=" + mWifiTaskCallback +
+                ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mFailReason=" + mFailReason +
+                ", mCurrentStatus=" + mCurrentStatus +
                 '}';
     }
-
-    public interface OnConnectToWifiCallback extends WifiTaskCallback {
-
-        void onConnectToWifiPreparing();
-
-        void onConnectToWifiPreparingNextStep(int nextStep);
-
-        void onConnectToWifiStart();
-
-        void onConnectToWifiConnecting(int connectingDetail);
-
-        void onConnectToWifiSuccess();
-
-        void onConnectToWifiFail(int connectToWifiFailReason);
-
-    }
-
 
 }

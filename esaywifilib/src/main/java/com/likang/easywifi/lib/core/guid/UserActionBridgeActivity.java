@@ -24,21 +24,16 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
 
     private static final String TAG = "UserActionBridgeActivity";
 
-    protected static final int CALLBACK_ID_UNKNOWN = -1;
-
-    protected static final int STEP_CODE_UNKNOWN = -1;
     public static final int STEP_CODE_ENABLE_LOCATION_MODULE = 1;
     public static final int STEP_CODE_REQUEST_LOCATION_PERMISSION = 2;
     public static final int STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION = 3;
 
-    public static final String WIFI_TASK_TYPE = "wifi_task_type";
     public static final String STEP_CODE = "step_code";
     public static final String CALLBACK_ID = "callback_id";
 
     private static HashMap<Integer, OnUserDoneCallback> sOnUserDoneCallbacks;
-    private int mCallbackId = CALLBACK_ID_UNKNOWN;
-    private int mStepCode = STEP_CODE_UNKNOWN;
-    private int mWifiTaskType = EasyWifi.WIFI_TASK_TYPE_UNKNOWN;
+    private int mCallbackId;
+    private int mStepCode;
     private boolean mIsFirstOnResume = true;
 
     @Override
@@ -50,20 +45,8 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
         }
 
         Intent intent = getIntent();
-        mCallbackId = intent.getIntExtra(CALLBACK_ID, CALLBACK_ID_UNKNOWN);
-        mStepCode = intent.getIntExtra(STEP_CODE, STEP_CODE_UNKNOWN);
-        mWifiTaskType = intent.getIntExtra(WIFI_TASK_TYPE, EasyWifi.WIFI_TASK_TYPE_UNKNOWN);
-
-        if (mCallbackId == CALLBACK_ID_UNKNOWN) {
-            throw new IllegalArgumentException("callback id unknown!");
-        }
-        if (mStepCode == STEP_CODE_UNKNOWN) {
-            throw new IllegalArgumentException("step code unknown!");
-        }
-        if (mWifiTaskType == EasyWifi.WIFI_TASK_TYPE_UNKNOWN) {
-            throw new IllegalArgumentException("wifi task type unknown!");
-        }
-
+        mCallbackId = intent.getIntExtra(CALLBACK_ID, 0);
+        mStepCode = intent.getIntExtra(STEP_CODE, 0);
 
         switch (mStepCode) {
             case STEP_CODE_ENABLE_LOCATION_MODULE:

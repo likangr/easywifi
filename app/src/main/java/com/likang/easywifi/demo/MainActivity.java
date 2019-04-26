@@ -12,6 +12,7 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -24,7 +25,9 @@ import com.likang.easywifi.lib.core.task.GetConnectionInfoTask;
 import com.likang.easywifi.lib.core.task.ScanWifiTask;
 import com.likang.easywifi.lib.core.task.SetWifiEnabledTask;
 import com.likang.easywifi.lib.core.task.WifiTask;
+import com.likang.easywifi.lib.core.task.WifiTaskCallback;
 import com.likang.easywifi.lib.util.Logger;
+import com.likang.easywifi.lib.util.WifiUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,217 +42,227 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private ArrayList<String> mWifiSsidList = new ArrayList<>();
     private List<ScanResult> mScanResults;
     private ArrayAdapter<String> mWifiListAdapter;
-    private WifiTask mCurWifiTask;
+    private ArrayList<WifiTask> mCurWifiTasks = new ArrayList<>();
 
 
-    private SetWifiEnabledTask.OnSetWifiEnabledCallback mOnSetWifiEnabledCallback = new SetWifiEnabledTask.OnSetWifiEnabledCallback() {
+    private WifiTaskCallback mOnSetWifiEnabledCallback = new WifiTaskCallback<SetWifiEnabledTask>() {
         @Override
-        public void onSetWifiEnabledPreparing(boolean enabled) {
-            Logger.d(TAG, "enabled=" + enabled + " onSetWifiEnabledPreparing");
+        public void onTaskStartRun(SetWifiEnabledTask wifiTask) {
+            Logger.d(TAG, "onTaskStartRun enabled=" + wifiTask.isEnabled());
             setPbVisible(true);
         }
 
         @Override
-        public void onSetWifiEnabledPreparingNextStep(boolean enabled, int nextStep) {
-            Logger.d(TAG, "enabled=" + enabled + " onSetWifiEnabledPreparingNextStep nextStep=" + nextStep);
+        public void onTaskRunningCurrentStep(SetWifiEnabledTask wifiTask) {
+            Logger.d(TAG, "onTaskRunningCurrentStep enabled=" + wifiTask.isEnabled() + ",currentStep=" + wifiTask.getRunningCurrentStep());
         }
 
         @Override
-        public void onSetWifiEnabledStart(boolean enabled) {
-            Logger.d(TAG, "enabled=" + enabled + " onSetWifiEnabledStart");
-        }
-
-        @Override
-        public void onSetWifiEnabledSuccess(boolean enabled) {
-            Logger.d(TAG, "enabled=" + enabled + " onSetWifiEnabledSuccess");
+        public void onTaskSuccess(SetWifiEnabledTask wifiTask) {
+            Logger.d(TAG, "onTaskSuccess enabled=" + wifiTask.isEnabled());
             setPbVisible(false);
-            mCurWifiTask = null;
+            mCurWifiTasks.remove(wifiTask);
         }
 
         @Override
-        public void onSetWifiEnabledFail(boolean enabled, int setWifiEnabledFailReason) {
-            Logger.d(TAG, "enabled=" + enabled + " onSetWifiEnabledFail setWifiEnabledFailReason=" + setWifiEnabledFailReason);
+        public void onTaskFail(SetWifiEnabledTask wifiTask) {
+            Logger.d(TAG, "onTaskRunningCurrentStep enabled=" + wifiTask.isEnabled() + ",failReason=" + wifiTask.getFailReason());
             setPbVisible(false);
-            mCurWifiTask = null;
+            mCurWifiTasks.remove(wifiTask);
         }
+
     };
 
-    private ScanWifiTask.OnScanWifiCallback mOnScanWifiCallback = new ScanWifiTask.OnScanWifiCallback() {
+
+    private WifiTaskCallback mOnScanWifiCallback = new WifiTaskCallback<ScanWifiTask>() {
         @Override
-        public void onScanWifiPreparing() {
-            Logger.d(TAG, "onScanWifiPreparing");
+        public void onTaskStartRun(ScanWifiTask wifiTask) {
+            Logger.d(TAG, "onTaskStartRun");
             setPbVisible(true);
         }
 
         @Override
-        public void onScanWifiPreparingNextStep(int nextStep) {
-            Logger.d(TAG, "onScanWifiPreparingNextStep nextStep=" + nextStep);
+        public void onTaskRunningCurrentStep(ScanWifiTask wifiTask) {
+            Logger.d(TAG, "onTaskRunningCurrentStep currentStep=" + wifiTask.getRunningCurrentStep());
         }
 
         @Override
-        public void onScanWifiStart() {
-            Logger.d(TAG, "onScanWifiStart");
-        }
-
-        @Override
-        public void onScanWifiSuccess() {
-            Logger.d(TAG, "onScanWifiSuccess");
+        public void onTaskSuccess(ScanWifiTask wifiTask) {
+            Logger.d(TAG, "onTaskSuccess");
             setPbVisible(false);
             List<ScanResult> scanResults = EasyWifi.getScanResults();
             updateWifiSsidListFromScanResults(scanResults);
-            mCurWifiTask = null;
+            mCurWifiTasks.remove(wifiTask);
         }
 
         @Override
-        public void onScanWifiFail(int scanWifiFailReason) {
-            Logger.d(TAG, "onScanWifiFail scanWifiFailReason=" + scanWifiFailReason);
+        public void onTaskFail(ScanWifiTask wifiTask) {
+            Logger.d(TAG, "onTaskFail failReason=" + wifiTask.getFailReason());
             setPbVisible(false);
-            mCurWifiTask = null;
+            mCurWifiTasks.remove(wifiTask);
         }
+
     };
-
-    private GetConnectionInfoTask.OnGetConnectionInfoCallback mOnGetConnectionInfoCallback = new GetConnectionInfoTask.OnGetConnectionInfoCallback() {
+    private WifiTaskCallback mOnGetConnectionInfoCallback = new WifiTaskCallback<GetConnectionInfoTask>() {
         @Override
-        public void onGetConnectionInfoPreparing() {
-            Logger.d(TAG, "onGetConnectionInfoPreparing");
+        public void onTaskStartRun(GetConnectionInfoTask wifiTask) {
+            Logger.d(TAG, "onTaskStartRun");
         }
 
         @Override
-        public void onGetConnectionInfoPreparingNextStep(int nextStep) {
-            Logger.d(TAG, "onGetConnectionInfoPreparingNextStep nextStep=" + nextStep);
+        public void onTaskRunningCurrentStep(GetConnectionInfoTask wifiTask) {
+            Logger.d(TAG, "onTaskRunningCurrentStep currentStep=" + wifiTask.getRunningCurrentStep());
         }
 
         @Override
-        public void onGetConnectionInfoSuccess(WifiInfo wifiInfo) {
-            Logger.d(TAG, "onGetConnectionInfoSuccess wifiInfo=" + wifiInfo);
+        public void onTaskSuccess(GetConnectionInfoTask wifiTask) {
+            WifiInfo wifiInfo = wifiTask.getWifiInfo();
+            Logger.d(TAG, "onTaskSuccess wifiInfo=" + wifiInfo);
             mTvConnectionInfo.setText(String.format("connection info: %s %s", wifiInfo.getSSID(), wifiInfo.getBSSID()));
-            mCurWifiTask = null;
+            mCurWifiTasks.remove(wifiTask);
         }
 
         @Override
-        public void onGetConnectionInfoFail(int getConnectionFailReason) {
-            Logger.d(TAG, "onGetConnectionInfoFail getConnectionFailReason=" + getConnectionFailReason);
+        public void onTaskFail(GetConnectionInfoTask wifiTask) {
+            int failReason = wifiTask.getFailReason();
+            Logger.d(TAG, "onTaskFail failReason=" + failReason);
             mTvConnectionInfo.setText("connection info: unknown");
-            mCurWifiTask = null;
+            mCurWifiTasks.remove(wifiTask);
+
         }
+
     };
-
-
-    private ConnectToWifiTask.OnConnectToWifiCallback mOnConnectToWifiCallback = new ConnectToWifiTask.OnConnectToWifiCallback() {
+    private WifiTaskCallback mOnConnectToWifiCallback = new WifiTaskCallback<ConnectToWifiTask>() {
         @Override
-        public void onConnectToWifiPreparing() {
-            Logger.d(TAG, "onConnectToWifiPreparing");
-        }
-
-        @Override
-        public void onConnectToWifiPreparingNextStep(int nextStep) {
-            Logger.d(TAG, "onConnectToWifiPreparingNextStep nextStep=" + nextStep);
-        }
-
-        @Override
-        public void onConnectToWifiStart() {
-            Logger.d(TAG, "onConnectToWifiStart");
-        }
-
-        @Override
-        public void onConnectToWifiConnecting(int connectingDetail) {
-            Logger.d(TAG, "onConnectToWifiConnecting connectingDetail=" + connectingDetail);
-        }
-
-        @Override
-        public void onConnectToWifiSuccess() {
-            Logger.d(TAG, "onConnectToWifiSuccess");
-            setPbVisible(false);
-            mCurWifiTask = null;
-            updateConnectionInfo();
-        }
-
-        @Override
-        public void onConnectToWifiFail(int connectToWifiFailReason) {
-            Logger.d(TAG, "onConnectToWifiFail connectToWifiFailReason=" + connectToWifiFailReason);
-            setPbVisible(false);
-            mCurWifiTask = null;
-
-            if (connectToWifiFailReason == EasyWifi.TASK_FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
-
-            }
-
-        }
-    };
-
-
-    private CheckIsAlreadyConnectedTask.OnCheckIsAlreadyConnectedCallback mOnCheckIsAlreadyConnectedCallback = new CheckIsAlreadyConnectedTask.OnCheckIsAlreadyConnectedCallback() {
-        @Override
-        public void onCheckIsAlreadyConnectedCallbackPreparing() {
-            Logger.d(TAG, "onCheckIsAlreadyConnectedCallbackPreparing");
+        public void onTaskStartRun(ConnectToWifiTask wifiTask) {
+            Logger.d(TAG, "onTaskStartRun");
             setPbVisible(true);
         }
 
         @Override
-        public void onCheckIsAlreadyConnectedCallbackPreparingNextStep(int nextStep) {
-            Logger.d(TAG, "onCheckIsAlreadyConnectedCallbackPreparingNextStep nextStep=" + nextStep);
+        public void onTaskRunningCurrentStep(ConnectToWifiTask wifiTask) {
+            Logger.d(TAG, "onTaskRunningCurrentStep currentStep=" + wifiTask.getRunningCurrentStep());
         }
 
         @Override
-        public void onCheckIsAlreadyConnectedCallbackSuccess(boolean isAlreadyConnected, String ssid, String bssid) {
-            Logger.d(TAG, "onCheckIsAlreadyConnectedCallbackSuccess isAlreadyConnected=" + isAlreadyConnected + ",ssid=" + ssid + ",bssid" + bssid);
+        public void onTaskSuccess(ConnectToWifiTask wifiTask) {
+            Logger.d(TAG, "onTaskSuccess");
+            setPbVisible(false);
+            updateConnectionInfo();
+            mCurWifiTasks.remove(wifiTask);
         }
 
-
         @Override
-        public void onCheckIsAlreadyConnectedCallbackSuccess(boolean isAlreadyConnected, final ScanResult scanResult) {
-            Logger.d(TAG, "onCheckIsAlreadyConnectedCallbackSuccess isAlreadyConnected=" + isAlreadyConnected + ",scanResult=" + scanResult);
-            if (isAlreadyConnected) {
-
-                setPbVisible(false);
-
-            } else {
-
-                WifiConfiguration configuredWifiConfiguration = EasyWifi.getConfiguredWifiConfiguration(scanResult);
-                if (configuredWifiConfiguration != null) {
-
-                    ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
-                            EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
-                            configuredWifiConfiguration,
-                            mOnConnectToWifiCallback);
-                    EasyWifi.executeTask(connectToWifiTask);
-                    mCurWifiTask = connectToWifiTask;
-                } else {
-
-                    final EditText editText = new EditText(MainActivity.this);
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this).setTitle(String.format("请输入%s的密码", scanResult.SSID)).setView(editText)
-                            .setPositiveButton("确定", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-                                    ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
-                                            scanResult,
-                                            editText.getText().toString().trim(),
-                                            EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
-                                            mOnConnectToWifiCallback);
-                                    EasyWifi.executeTask(connectToWifiTask);
-                                    mCurWifiTask = connectToWifiTask;
-                                }
-                            }).setOnCancelListener(new DialogInterface.OnCancelListener() {
-                                @Override
-                                public void onCancel(DialogInterface dialog) {
-                                    setPbVisible(false);
-                                }
-                            });
-                    builder.create().show();
-
-                }
-
-
+        public void onTaskFail(ConnectToWifiTask wifiTask) {
+            int failReason = wifiTask.getFailReason();
+            Logger.d(TAG, "onTaskFail failReason=" + failReason);
+            setPbVisible(false);
+            mCurWifiTasks.remove(wifiTask);
+            if (failReason == EasyWifi.TASK_FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
+                Toast.makeText(MainActivity.this, "密码错误，请重新输入", Toast.LENGTH_SHORT).show();
+                showPsdDialog(null, wifiTask.getWifiConfiguration());
             }
         }
 
+    };
+    private WifiTaskCallback mOnCheckIsAlreadyConnectedCallback = new WifiTaskCallback<CheckIsAlreadyConnectedTask>() {
         @Override
-        public void onCheckIsAlreadyConnectedCallbackFail(int getConnectionFailReason) {
-            Logger.d(TAG, "onCheckIsAlreadyConnectedCallbackFail getConnectionFailReason=" + getConnectionFailReason);
-            setPbVisible(false);
+        public void onTaskStartRun(CheckIsAlreadyConnectedTask wifiTask) {
+            Logger.d(TAG, "onTaskStartRun");
+            setPbVisible(true);
         }
+
+        @Override
+        public void onTaskRunningCurrentStep(CheckIsAlreadyConnectedTask wifiTask) {
+            Logger.d(TAG, "onTaskRunningCurrentStep currentStep=" + wifiTask.getRunningCurrentStep());
+        }
+
+        @Override
+        public void onTaskSuccess(CheckIsAlreadyConnectedTask wifiTask) {
+            boolean isAlreadyConnected = wifiTask.getIsAlreadyConnected();
+            Logger.d(TAG, "onTaskSuccess isAlreadyConnected=" + isAlreadyConnected + ",ssid=" + wifiTask.getSsid() + ",bssid" + wifiTask.getBssid());
+            final ScanResult scanResult = wifiTask.getScanResult();
+            setPbVisible(false);
+
+            if (!isAlreadyConnected) {
+
+                final WifiConfiguration configuredWifiConfiguration = EasyWifi.getConfiguredWifiConfiguration(scanResult);
+                final boolean[] configuredWifiPasswordIsWrong = {false};
+                if (configuredWifiConfiguration != null) {
+
+                    configuredWifiPasswordIsWrong[0] = WifiUtils.isConfiguredWifiPasswordIsWrong(configuredWifiConfiguration);
+
+                    if (!configuredWifiPasswordIsWrong[0]) {
+                        ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
+                                EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
+                                configuredWifiConfiguration,
+                                mOnConnectToWifiCallback);
+                        EasyWifi.executeTask(connectToWifiTask);
+                        mCurWifiTasks.add(connectToWifiTask);
+                        return;
+                    }
+                }
+
+                showPsdDialog(scanResult, configuredWifiConfiguration);
+
+            }
+            mCurWifiTasks.remove(wifiTask);
+        }
+
+        @Override
+        public void onTaskFail(CheckIsAlreadyConnectedTask wifiTask) {
+            int failReason = wifiTask.getFailReason();
+            Logger.d(TAG, "onTaskFail failReason=" + failReason);
+            setPbVisible(false);
+            mCurWifiTasks.remove(wifiTask);
+        }
+
     };
 
+    private void showPsdDialog(final ScanResult scanResult, final WifiConfiguration configuredWifiConfiguration) {
+        final EditText editText = new EditText(MainActivity.this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this).setTitle(String.format("请输入%s的密码",
+                scanResult != null ? scanResult.SSID : configuredWifiConfiguration.SSID)).setView(editText)
+                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        String password = editText.getText().toString().trim();
+
+                        if (configuredWifiConfiguration != null) {
+                            int updateNetwork = WifiUtils.updateConfiguredWifiPassword(EasyWifi.getWifiManager(), configuredWifiConfiguration, password);
+
+                            if (updateNetwork == -1) {
+                                //don't has update permission.
+                                Toast.makeText(MainActivity.this, "需要您在系统设置中修改wifi密码", Toast.LENGTH_SHORT).show();
+                            } else {
+
+                                ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
+                                        EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
+                                        configuredWifiConfiguration,
+                                        mOnConnectToWifiCallback);
+                                EasyWifi.executeTask(connectToWifiTask);
+                                mCurWifiTasks.add(connectToWifiTask);
+                            }
+
+                        } else {
+                            ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
+                                    scanResult,
+                                    password,
+                                    EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
+                                    mOnConnectToWifiCallback);
+                            EasyWifi.executeTask(connectToWifiTask);
+                            mCurWifiTasks.add(connectToWifiTask);
+                        }
+
+                    }
+                }).setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialog) {
+                        setPbVisible(false);
+                    }
+                });
+        builder.create().show();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -265,29 +278,34 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         updateConnectionInfo();
 
+        resumeTaskIfNeed(savedInstanceState);
+
+    }
+
+    private void resumeTaskIfNeed(Bundle savedInstanceState) {
         if (savedInstanceState != null) {
 
-            mCurWifiTask = savedInstanceState.getParcelable(SAVE_INSTANCE_STATE_KEY_WIFI_TASK);
-            if (mCurWifiTask == null) {
-                return;
+            mCurWifiTasks = savedInstanceState.getParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK);
+
+            for (WifiTask wifiTask : mCurWifiTasks) {
+
+                if (wifiTask instanceof SetWifiEnabledTask) {
+                    wifiTask.setWifiTaskCallback(mOnSetWifiEnabledCallback);
+                } else if (wifiTask instanceof ScanWifiTask) {
+                    wifiTask.setWifiTaskCallback(mOnScanWifiCallback);
+                    ((ScanWifiTask) wifiTask).setSingleTaskActivity(this);
+                } else if (wifiTask instanceof ConnectToWifiTask) {
+                    wifiTask.setWifiTaskCallback(mOnConnectToWifiCallback);
+                } else if (wifiTask instanceof CheckIsAlreadyConnectedTask) {
+                    wifiTask.setWifiTaskCallback(mOnCheckIsAlreadyConnectedCallback);
+                } else if (wifiTask instanceof GetConnectionInfoTask) {
+                    wifiTask.setWifiTaskCallback(mOnGetConnectionInfoCallback);
+                }
+                Logger.d(TAG, "resume WifiTask=" + wifiTask);
+                EasyWifi.executeTask(wifiTask);
             }
 
-            if (mCurWifiTask instanceof SetWifiEnabledTask) {
-                mCurWifiTask.setWifiTaskCallback(mOnSetWifiEnabledCallback);
-            } else if (mCurWifiTask instanceof ScanWifiTask) {
-                mCurWifiTask.setWifiTaskCallback(mOnScanWifiCallback);
-                ((ScanWifiTask) mCurWifiTask).setSingleTaskActivity(this);
-            } else if (mCurWifiTask instanceof GetConnectionInfoTask) {
-                mCurWifiTask.setWifiTaskCallback(mOnGetConnectionInfoCallback);
-            } else if (mCurWifiTask instanceof ConnectToWifiTask) {
-                mCurWifiTask.setWifiTaskCallback(mOnConnectToWifiCallback);
-            } else if (mCurWifiTask instanceof CheckIsAlreadyConnectedTask) {
-                mCurWifiTask.setWifiTaskCallback(mOnCheckIsAlreadyConnectedCallback);
-            }
-            Logger.d(TAG, "resume WifiTask=" + mCurWifiTask);
-            EasyWifi.executeTask(mCurWifiTask);
         }
-
     }
 
     public void openWifi(View view) {
@@ -304,7 +322,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
                 mOnSetWifiEnabledCallback);
         EasyWifi.executeTask(setWifiEnabledTask);
-        mCurWifiTask = setWifiEnabledTask;
+        mCurWifiTasks.add(setWifiEnabledTask);
     }
 
 
@@ -317,7 +335,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 mOnScanWifiCallback);
 
         EasyWifi.executeTask(scanWifiTask);
-        mCurWifiTask = scanWifiTask;
+        mCurWifiTasks.add(scanWifiTask);
     }
 
     private void updateWifiSsidListFromScanResults(List<ScanResult> scanResults) {
@@ -332,17 +350,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private void updateConnectionInfo() {
         GetConnectionInfoTask getConnectionInfoTask = new GetConnectionInfoTask(mOnGetConnectionInfoCallback);
         EasyWifi.executeTask(getConnectionInfoTask);
-        mCurWifiTask = getConnectionInfoTask;
+        mCurWifiTasks.add(getConnectionInfoTask);
     }
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
         ScanResult scanResult = mScanResults.get(position);
 
         CheckIsAlreadyConnectedTask checkIsAlreadyConnectedTask = new CheckIsAlreadyConnectedTask(scanResult, mOnCheckIsAlreadyConnectedCallback);
         EasyWifi.executeTask(checkIsAlreadyConnectedTask);
-        mCurWifiTask = checkIsAlreadyConnectedTask;
-
+        mCurWifiTasks.add(checkIsAlreadyConnectedTask);
     }
 
 
@@ -350,10 +368,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         mPbWait.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
-
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putParcelable(SAVE_INSTANCE_STATE_KEY_WIFI_TASK, mCurWifiTask);
+        outState.putParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK, mCurWifiTasks);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        for (WifiTask wifiTask : mCurWifiTasks) {
+            EasyWifi.cancelTask(wifiTask);
+        }
     }
 }

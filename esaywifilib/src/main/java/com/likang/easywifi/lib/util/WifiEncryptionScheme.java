@@ -3,6 +3,9 @@ package com.likang.easywifi.lib.util;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 
 public class WifiEncryptionScheme {
 
@@ -102,6 +105,31 @@ public class WifiEncryptionScheme {
         }
         if (result.capabilities.contains(ENCRYPTION_SCHEME_EAP)) {
             encryptionScheme = ENCRYPTION_SCHEME_EAP;
+        }
+
+        return encryptionScheme;
+    }
+
+
+    public static String getEncryptionSchemeByWifiConfiguration(WifiConfiguration config) {
+        String encryptionScheme = ENCRYPTION_SCHEME_NONE;
+        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.NONE)) {
+            // If we never set group ciphers, wpa_supplicant puts all of them.
+            // For open, we don't set group ciphers.
+            // For WEP, we specifically only set WEP40 and WEP104, so CCMP
+            // and TKIP should not be there.
+            if (config.wepKeys[0] != null) {
+                encryptionScheme = ENCRYPTION_SCHEME_WEP;
+            } else {
+                encryptionScheme = ENCRYPTION_SCHEME_NONE;
+            }
+        }
+        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_EAP) ||
+                config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.IEEE8021X)) {
+            encryptionScheme = ENCRYPTION_SCHEME_EAP;
+        }
+        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK)) {
+            encryptionScheme = ENCRYPTION_SCHEME_PSK;
         }
 
         return encryptionScheme;

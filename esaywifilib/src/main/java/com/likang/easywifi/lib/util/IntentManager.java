@@ -49,13 +49,12 @@ public class IntentManager {
         context.startActivity(intent);
     }
 
-    public static void gotoUserActionBridgeActivity(int wifiTaskType, int stepCode, UserActionBridgeActivity.OnUserDoneCallback onUserDoneCallback) {
+    public static void gotoUserActionBridgeActivity(int stepCode, UserActionBridgeActivity.OnUserDoneCallback onUserDoneCallback) {
         Application application = ApplicationHolder.getApplication();
         UserActionBridgeActivity.setOnUserDoneCallback(onUserDoneCallback);
         Intent intent = new Intent(application, UserActionBridgeActivity.class);
         intent.putExtra(UserActionBridgeActivity.CALLBACK_ID, onUserDoneCallback.hashCode());
         intent.putExtra(UserActionBridgeActivity.STEP_CODE, stepCode);
-        intent.putExtra(UserActionBridgeActivity.WIFI_TASK_TYPE, wifiTaskType);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         application.startActivity(intent);
     }
