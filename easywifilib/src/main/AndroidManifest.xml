@@ -16,5 +16,11 @@
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="behind"
             android:theme="@style/NoTitleTranslucentTheme" />
+        <activity
+            android:name=".core.task.ScanWifiTask$RequestSystemWifiScanActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:launchMode="singleTask"
+            android:screenOrientation="behind"
+            android:theme="@style/NoTitleTranslucentTheme" />
     </application>
 </manifest>

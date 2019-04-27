@@ -10,6 +10,7 @@ import android.os.Build;
 import android.provider.Settings;
 
 import com.likang.easywifi.lib.core.guid.UserActionBridgeActivity;
+import com.likang.easywifi.lib.core.task.ScanWifiTask;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -22,8 +23,15 @@ public class IntentManager {
 
     private static final String TAG = "IntentManager";
 
+    public static void gotoRequestSystemWifiScanActivity() {
+        Application application = ApplicationHolder.getApplication();
+        Intent intent = new Intent(application, ScanWifiTask.RequestSystemWifiScanActivity.class);
+        intent.putExtra(ScanWifiTask.RequestSystemWifiScanActivity.INTENT_EXTRA_KEY_IS_REQUEST_SYSTEM_WIFI_SETTING_SCAN, true);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        application.startActivity(intent);
+    }
 
-    public static boolean gotoWifiSettings(Context context) {
+    public static void gotoWifiSettings(Context context) {
         Intent intent = new Intent();
         if (!(context instanceof Activity)) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -31,12 +39,10 @@ public class IntentManager {
         try {
             intent.setClassName("com.android.settings", "com.android.settings.Settings$WifiSettingsActivity");
             context.startActivity(intent);
-            return true;
         } catch (Exception e) {
             e.printStackTrace();
             intent.setAction(Settings.ACTION_WIFI_SETTINGS);
             context.startActivity(intent);
-            return true;
         }
     }
 
@@ -53,8 +59,8 @@ public class IntentManager {
         Application application = ApplicationHolder.getApplication();
         UserActionBridgeActivity.setOnUserDoneCallback(onUserDoneCallback);
         Intent intent = new Intent(application, UserActionBridgeActivity.class);
-        intent.putExtra(UserActionBridgeActivity.CALLBACK_ID, onUserDoneCallback.hashCode());
-        intent.putExtra(UserActionBridgeActivity.STEP_CODE, stepCode);
+        intent.putExtra(UserActionBridgeActivity.INTENT_EXTRA_KEY_CALLBACK_ID, onUserDoneCallback.hashCode());
+        intent.putExtra(UserActionBridgeActivity.INTENT_EXTRA_KEY_STEP_CODE, stepCode);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         application.startActivity(intent);
     }

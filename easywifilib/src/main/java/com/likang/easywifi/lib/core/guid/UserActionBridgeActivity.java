@@ -28,8 +28,8 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
     public static final int STEP_CODE_REQUEST_LOCATION_PERMISSION = 2;
     public static final int STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION = 3;
 
-    public static final String STEP_CODE = "step_code";
-    public static final String CALLBACK_ID = "callback_id";
+    public static final String INTENT_EXTRA_KEY_STEP_CODE = "step_code";
+    public static final String INTENT_EXTRA_KEY_CALLBACK_ID = "callback_id";
 
     private static HashMap<Integer, OnUserDoneCallback> sOnUserDoneCallbacks;
     private int mCallbackId;
@@ -45,8 +45,8 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
         }
 
         Intent intent = getIntent();
-        mCallbackId = intent.getIntExtra(CALLBACK_ID, 0);
-        mStepCode = intent.getIntExtra(STEP_CODE, 0);
+        mCallbackId = intent.getIntExtra(INTENT_EXTRA_KEY_CALLBACK_ID, 0);
+        mStepCode = intent.getIntExtra(INTENT_EXTRA_KEY_STEP_CODE, 0);
 
         switch (mStepCode) {
             case STEP_CODE_ENABLE_LOCATION_MODULE:

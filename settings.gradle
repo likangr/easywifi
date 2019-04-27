@@ -1,1 +1,1 @@
-include ':app', ':esaywifilib'
+include ':app', ':easywifilib'

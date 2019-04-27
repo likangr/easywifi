@@ -277,7 +277,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     wifiTask.setWifiTaskCallback(mOnSetWifiEnabledCallback);
                 } else if (wifiTask instanceof ScanWifiTask) {
                     wifiTask.setWifiTaskCallback(mOnScanWifiCallback);
-                    ((ScanWifiTask) wifiTask).setSingleTaskActivity(this);
                 } else if (wifiTask instanceof ConnectToWifiTask) {
                     wifiTask.setWifiTaskCallback(mOnConnectToWifiCallback);
                 } else if (wifiTask instanceof CheckIsAlreadyConnectedTask) {

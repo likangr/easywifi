@@ -1,14 +1,19 @@
 package com.likang.easywifi.lib.core.task;
 
 import android.app.Activity;
-import android.app.Application;
-import android.content.ComponentName;
-import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
+import android.app.ActivityManager;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
 import android.os.Parcel;
+import android.widget.Toast;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.likang.easywifi.lib.EasyWifi;
-import com.likang.easywifi.lib.util.ApplicationHolder;
+import com.likang.easywifi.lib.core.guid.UserActionGuideToast;
+import com.likang.easywifi.lib.util.IntentManager;
 
 
 /**
@@ -20,8 +25,6 @@ public class ScanWifiTask extends WifiTask {
     private long mSetWifiEnabledTimeout;
     private int mScanWifiWay;
     private boolean mIsAutoSwitchToThroughSystemWifi;
-    private Activity mSingleTaskActivity;
-
 
     public ScanWifiTask(long scanWifiTimeout,
                         long setWifiEnabledTimeout,
@@ -34,8 +37,6 @@ public class ScanWifiTask extends WifiTask {
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
         mScanWifiWay = scanWifiWay;
         mIsAutoSwitchToThroughSystemWifi = isAutoSwitchToThroughSystemWifi;
-        mSingleTaskActivity = singleTaskActivity;
-
     }
 
 
@@ -80,14 +81,6 @@ public class ScanWifiTask extends WifiTask {
         mIsAutoSwitchToThroughSystemWifi = isAutoSwitchToThroughSystemWifi;
     }
 
-    public Activity getSingleTaskActivity() {
-        return mSingleTaskActivity;
-    }
-
-    public void setSingleTaskActivity(Activity singleTaskActivity) {
-        mSingleTaskActivity = singleTaskActivity;
-    }
-
 
     @Override
     void checkParams() {
@@ -103,24 +96,6 @@ public class ScanWifiTask extends WifiTask {
             throw new IllegalArgumentException("ScanWifiWay must be one of EasyWifi.SCAN_WIFI_WAY_THROUGH_WIFI_SETTING or EasyWifi.SCAN_WIFI_WAY_INITIATIVE");
         }
 
-        if (mScanWifiWay == EasyWifi.SCAN_WIFI_WAY_THROUGH_WIFI_SETTING || mIsAutoSwitchToThroughSystemWifi) {
-            if (mSingleTaskActivity == null) {
-                throw new IllegalArgumentException("SingleTaskActivity can't be null!");
-            }
-
-            int launchMode = -1;
-            try {
-                Application application = ApplicationHolder.getApplication();
-                ComponentName componentName = new ComponentName(application, mSingleTaskActivity.getClass());
-                launchMode = application.getPackageManager().getActivityInfo(componentName, PackageManager.GET_META_DATA).launchMode;
-            } catch (PackageManager.NameNotFoundException e) {
-                e.printStackTrace();
-            }
-
-            if (launchMode != ActivityInfo.LAUNCH_SINGLE_TASK) {
-                throw new IllegalArgumentException("SingleTaskActivity's launch mode must be single task!");
-            }
-        }
     }
 
     @Override
@@ -158,11 +133,62 @@ public class ScanWifiTask extends WifiTask {
                 ", mSetWifiEnabledTimeout=" + mSetWifiEnabledTimeout +
                 ", mScanWifiWay=" + mScanWifiWay +
                 ", mIsAutoSwitchToThroughSystemWifi=" + mIsAutoSwitchToThroughSystemWifi +
-                ", mSingleTaskActivity=" + mSingleTaskActivity +
                 ", mWifiTaskCallback=" + mWifiTaskCallback +
                 ", mRunningCurrentStep=" + mRunningCurrentStep +
                 ", mFailReason=" + mFailReason +
                 ", mCurrentStatus=" + mCurrentStatus +
                 '}';
+    }
+
+    public static class RequestSystemWifiScanActivity extends AppCompatActivity {
+
+        private static final String TAG = "RequestSystemWifiScanActivity";
+        public static final String INTENT_EXTRA_KEY_IS_REQUEST_SYSTEM_WIFI_SETTING_SCAN = "is_request_system_wifi_setting_scan";
+
+        private static final long INVOKE_ON_STOP_TIMEOUT = 2000;
+
+        private boolean mIsInvokedOnStop = false;
+
+        @Override
+        protected void onCreate(@Nullable Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            boolean isRequestSystemWifiSettingScan = getIntent().getBooleanExtra(INTENT_EXTRA_KEY_IS_REQUEST_SYSTEM_WIFI_SETTING_SCAN, false);
+            if (!isRequestSystemWifiSettingScan) {
+                finish();
+                return;
+            }
+
+            EasyWifi.getHandler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (!mIsInvokedOnStop) {
+                        finish();
+                    }
+                }
+            }, INVOKE_ON_STOP_TIMEOUT);
+
+            IntentManager.gotoWifiSettings(this);
+            UserActionGuideToast.showGuideToast(this, "正在扫描wifi",
+                    "即将返回刚才的页面", Toast.LENGTH_SHORT);
+        }
+
+
+        @Override
+        protected void onStop() {
+            super.onStop();
+            mIsInvokedOnStop = true;
+            startActivity(new Intent(this, this.getClass()));
+            //for compat:
+            ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            activityManager.moveTaskToFront(RequestSystemWifiScanActivity.this.getTaskId(), 0);
+
+        }
+
+        @Override
+        protected void onNewIntent(Intent intent) {
+            super.onNewIntent(intent);
+            finish();
+        }
+
     }
 }

@@ -1,7 +1,5 @@
 package com.likang.easywifi.lib;
 
-import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -12,14 +10,11 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
-import android.widget.Toast;
 
 import com.likang.easywifi.lib.core.guid.UserActionBridgeActivity;
-import com.likang.easywifi.lib.core.guid.UserActionGuideToast;
 import com.likang.easywifi.lib.core.task.ConnectToWifiTask;
 import com.likang.easywifi.lib.core.task.GetConnectionInfoTask;
 import com.likang.easywifi.lib.core.task.ScanWifiTask;
@@ -382,58 +377,8 @@ public final class EasyWifi {
 
                 if (isNeedSwitchToThroughSystemWifi || SCAN_WIFI_WAY_THROUGH_WIFI_SETTING == scanWifiTask.getScanWifiWay()) {
 
-                    requestStartScanResult = IntentManager.gotoWifiSettings(scanWifiTask.getSingleTaskActivity());
-                    UserActionGuideToast.showGuideToast(sApplication, "正在扫描wifi",
-                            "即将返回刚才的页面", Toast.LENGTH_SHORT);
-                    sApplication.registerActivityLifecycleCallbacks(
-                            new Application.ActivityLifecycleCallbacks() {
-                                @Override
-                                public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-
-                                }
-
-                                @Override
-                                public void onActivityStarted(Activity activity) {
-                                    Logger.d(TAG, "onActivityStarted=" + activity);
-                                }
-
-                                @Override
-                                public void onActivityResumed(Activity activity) {
-                                    Logger.d(TAG, "onActivityResumed=" + activity);
-                                }
-
-                                @Override
-                                public void onActivityPaused(Activity activity) {
-                                    Logger.d(TAG, "onActivityPaused=" + activity);
-                                }
-
-                                @Override
-                                public void onActivityStopped(Activity activity) {
-                                    Logger.d(TAG, "onActivityStopped=" + activity);
-                                    if (scanWifiTask.getSingleTaskActivity() == activity) {
-                                        scanWifiTask.getSingleTaskActivity().startActivity(
-                                                new Intent(scanWifiTask.getSingleTaskActivity(),
-                                                        scanWifiTask.getSingleTaskActivity().getClass()));
-
-                                        //for compat:
-                                        ActivityManager activityManager = (ActivityManager) sApplication.getSystemService(Context.ACTIVITY_SERVICE);
-                                        activityManager.moveTaskToFront(scanWifiTask.getSingleTaskActivity().getTaskId(), 0);
-
-                                        sApplication.unregisterActivityLifecycleCallbacks(this);
-                                    }
-
-                                }
-
-                                @Override
-                                public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
-
-                                }
-
-                                @Override
-                                public void onActivityDestroyed(Activity activity) {
-
-                                }
-                            });
+                    requestStartScanResult = true;
+                    IntentManager.gotoRequestSystemWifiScanActivity();
                 }
 
                 if (requestStartScanResult) {
@@ -928,7 +873,7 @@ public final class EasyWifi {
 
         if (!WifiUtils.checkWifiModuleIsExist(sWifiManager)) {
             onPrepareCallback.onPrepareFail(TASK_FAIL_REASON_WIFI_MODULE_NOT_EXIST);
-        } else if (!WifiUtils.checkHasChangeWifiStatePermission(sWifiManager)) {
+        } else if (!WifiUtils.checkHasChangeWifiStatePermission(sWifiManager)) {//fixme vivo reject crash.
             onPrepareCallback.onPreparingCurrentStep(PREPARING_CURRENT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION);
             IntentManager.gotoUserActionBridgeActivity(UserActionBridgeActivity.STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION,
                     new UserActionBridgeActivity.OnUserDoneCallback() {
