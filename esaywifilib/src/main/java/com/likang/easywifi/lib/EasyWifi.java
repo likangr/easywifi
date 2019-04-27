@@ -31,7 +31,9 @@ import com.likang.easywifi.lib.util.LocationUtils;
 import com.likang.easywifi.lib.util.Logger;
 import com.likang.easywifi.lib.util.WifiUtils;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -57,6 +59,8 @@ public final class EasyWifi {
     private static Handler sHandler;
     private static final Object sLock = new Object();
 
+    private static final ArrayList<WifiTask> CUR_WIFI_TASKS = new ArrayList<>();
+
     public static final int TASK_FAIL_REASON_LOCATION_MODULE_DISABLE = 1;
     public static final int TASK_FAIL_REASON_LOCATION_MODULE_NOT_EXIST = 2;
     public static final int TASK_FAIL_REASON_NOT_HAS_LOCATION_PERMISSIONS = 3;
@@ -74,6 +78,7 @@ public final class EasyWifi {
 
     public static final int TASK_FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED = 13;
     public static final int TASK_FAIL_REASON_SCAN_WIFI_TIMEOUT = 14;
+    public static final int TASK_FAIL_REASON_SCAN_WIFI_UNKNOWN = 15;
 
     public static final int PREPARING_CURRENT_STEP_CHECK_LOCATION_ENABLED = 1;
     public static final int PREPARING_CURRENT_STEP_SET_LOCATION_ENABLED = 2;
@@ -228,6 +233,19 @@ public final class EasyWifi {
         wifiTask.cancel();
     }
 
+    public static ArrayList<WifiTask> getCurrentTasks() {
+        checkIsInitialised();
+        return CUR_WIFI_TASKS;
+    }
+
+
+    public static void cancelAllTasks() {
+        Iterator<WifiTask> iterator = CUR_WIFI_TASKS.iterator();
+        while (iterator.hasNext()) {
+            iterator.next().cancel();
+        }
+    }
+
     /****internal****/
 
     /**
@@ -366,7 +384,7 @@ public final class EasyWifi {
 
                     requestStartScanResult = IntentManager.gotoWifiSettings(scanWifiTask.getSingleTaskActivity());
                     UserActionGuideToast.showGuideToast(sApplication, "正在扫描wifi",
-                            "操作指南：\n如果很长时间没有跳回应用，需要您点击「返回」键", Toast.LENGTH_SHORT);
+                            "即将返回刚才的页面", Toast.LENGTH_SHORT);
                     sApplication.registerActivityLifecycleCallbacks(
                             new Application.ActivityLifecycleCallbacks() {
                                 @Override
@@ -425,10 +443,11 @@ public final class EasyWifi {
                         @Override
                         public void onReceive(Context context, Intent intent) {
 
+                            boolean isSuccess = true;
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                                 if (!intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED,
                                         false)) {
-                                    return;
+                                    isSuccess = false;
                                 }
                             }
 
@@ -436,7 +455,11 @@ public final class EasyWifi {
                             scanWifiTask.setBroadcastReceiver(null);
                             sHandler.removeCallbacks(scanWifiTask.getPostDelayRunnable());
                             scanWifiTask.setPostDelayRunnable(null);
-                            scanWifiTask.callOnTaskSuccess();
+                            if (isSuccess) {
+                                scanWifiTask.callOnTaskSuccess();
+                            } else {
+                                scanWifiTask.callOnTaskFail(TASK_FAIL_REASON_SCAN_WIFI_UNKNOWN);
+                            }
                         }
                     });
 

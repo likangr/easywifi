@@ -40,13 +40,19 @@ public abstract class WifiTask implements Runnable, Parcelable {
         mWifiTaskCallback = wifiTaskCallback;
     }
 
+    void customCancel(Application application) {
+
+    }
+
     public void cancel() {
+        EasyWifi.getCurrentTasks().remove(this);
         final Handler handler = EasyWifi.getHandler();
         handler.post(new Runnable() {
             @Override
             public void run() {
                 if (mCurrentStatus == STATUS_RUNNING) {
                     Application application = ApplicationHolder.getApplication();
+                    customCancel(application);
                     if (mBroadcastReceiver != null) {
                         application.unregisterReceiver(mBroadcastReceiver);
                         mBroadcastReceiver = null;
@@ -106,6 +112,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
     }
 
     public void callOnTaskStartRun() {
+        EasyWifi.getCurrentTasks().add(this);
         mCurrentStatus = STATUS_RUNNING;
         if (mWifiTaskCallback != null) {
             mWifiTaskCallback.onTaskStartRun(this);
@@ -120,6 +127,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
     }
 
     public void callOnTaskSuccess() {
+        EasyWifi.getCurrentTasks().remove(this);
         mCurrentStatus = STATUS_SUCCEED;
         if (mWifiTaskCallback != null) {
             mWifiTaskCallback.onTaskSuccess(this);
@@ -127,6 +135,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
     }
 
     public void callOnTaskFail(int failReason) {
+        EasyWifi.getCurrentTasks().remove(this);
         mCurrentStatus = STATUS_FAILED;
         mFailReason = failReason;
         if (mWifiTaskCallback != null) {

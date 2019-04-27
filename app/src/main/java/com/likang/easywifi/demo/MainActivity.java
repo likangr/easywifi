@@ -42,8 +42,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private ArrayList<String> mWifiSsidList = new ArrayList<>();
     private List<ScanResult> mScanResults;
     private ArrayAdapter<String> mWifiListAdapter;
-    private ArrayList<WifiTask> mCurWifiTasks = new ArrayList<>();
-
 
     private WifiTaskCallback mOnSetWifiEnabledCallback = new WifiTaskCallback<SetWifiEnabledTask>() {
         @Override
@@ -61,14 +59,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         public void onTaskSuccess(SetWifiEnabledTask wifiTask) {
             Logger.d(TAG, "onTaskSuccess enabled=" + wifiTask.isEnabled());
             setPbVisible(false);
-            mCurWifiTasks.remove(wifiTask);
         }
 
         @Override
         public void onTaskFail(SetWifiEnabledTask wifiTask) {
             Logger.d(TAG, "onTaskRunningCurrentStep enabled=" + wifiTask.isEnabled() + ",failReason=" + wifiTask.getFailReason());
             setPbVisible(false);
-            mCurWifiTasks.remove(wifiTask);
         }
 
     };
@@ -92,14 +88,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             setPbVisible(false);
             List<ScanResult> scanResults = EasyWifi.getScanResults();
             updateWifiSsidListFromScanResults(scanResults);
-            mCurWifiTasks.remove(wifiTask);
         }
 
         @Override
         public void onTaskFail(ScanWifiTask wifiTask) {
             Logger.d(TAG, "onTaskFail failReason=" + wifiTask.getFailReason());
             setPbVisible(false);
-            mCurWifiTasks.remove(wifiTask);
         }
 
     };
@@ -119,7 +113,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             WifiInfo wifiInfo = wifiTask.getWifiInfo();
             Logger.d(TAG, "onTaskSuccess wifiInfo=" + wifiInfo);
             mTvConnectionInfo.setText(String.format("connection info: %s %s", wifiInfo.getSSID(), wifiInfo.getBSSID()));
-            mCurWifiTasks.remove(wifiTask);
         }
 
         @Override
@@ -127,8 +120,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             int failReason = wifiTask.getFailReason();
             Logger.d(TAG, "onTaskFail failReason=" + failReason);
             mTvConnectionInfo.setText("connection info: unknown");
-            mCurWifiTasks.remove(wifiTask);
-
         }
 
     };
@@ -149,7 +140,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             Logger.d(TAG, "onTaskSuccess");
             setPbVisible(false);
             updateConnectionInfo();
-            mCurWifiTasks.remove(wifiTask);
         }
 
         @Override
@@ -157,7 +147,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             int failReason = wifiTask.getFailReason();
             Logger.d(TAG, "onTaskFail failReason=" + failReason);
             setPbVisible(false);
-            mCurWifiTasks.remove(wifiTask);
             if (failReason == EasyWifi.TASK_FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
                 Toast.makeText(MainActivity.this, "密码错误，请重新输入", Toast.LENGTH_SHORT).show();
                 showPsdDialog(null, wifiTask.getWifiConfiguration());
@@ -198,7 +187,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                 configuredWifiConfiguration,
                                 mOnConnectToWifiCallback);
                         EasyWifi.executeTask(connectToWifiTask);
-                        mCurWifiTasks.add(connectToWifiTask);
                         return;
                     }
                 }
@@ -206,7 +194,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 showPsdDialog(scanResult, configuredWifiConfiguration);
 
             }
-            mCurWifiTasks.remove(wifiTask);
         }
 
         @Override
@@ -214,7 +201,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             int failReason = wifiTask.getFailReason();
             Logger.d(TAG, "onTaskFail failReason=" + failReason);
             setPbVisible(false);
-            mCurWifiTasks.remove(wifiTask);
         }
 
     };
@@ -241,7 +227,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                         configuredWifiConfiguration,
                                         mOnConnectToWifiCallback);
                                 EasyWifi.executeTask(connectToWifiTask);
-                                mCurWifiTasks.add(connectToWifiTask);
                             }
 
                         } else {
@@ -251,7 +236,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                     EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
                                     mOnConnectToWifiCallback);
                             EasyWifi.executeTask(connectToWifiTask);
-                            mCurWifiTasks.add(connectToWifiTask);
                         }
 
                     }
@@ -285,9 +269,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private void resumeTaskIfNeed(Bundle savedInstanceState) {
         if (savedInstanceState != null) {
 
-            mCurWifiTasks = savedInstanceState.getParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK);
+            ArrayList<WifiTask> taskList = savedInstanceState.getParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK);
 
-            for (WifiTask wifiTask : mCurWifiTasks) {
+            for (WifiTask wifiTask : taskList) {
 
                 if (wifiTask instanceof SetWifiEnabledTask) {
                     wifiTask.setWifiTaskCallback(mOnSetWifiEnabledCallback);
@@ -304,7 +288,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 Logger.d(TAG, "resume WifiTask=" + wifiTask);
                 EasyWifi.executeTask(wifiTask);
             }
-
         }
     }
 
@@ -322,7 +305,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
                 mOnSetWifiEnabledCallback);
         EasyWifi.executeTask(setWifiEnabledTask);
-        mCurWifiTasks.add(setWifiEnabledTask);
     }
 
 
@@ -335,7 +317,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 mOnScanWifiCallback);
 
         EasyWifi.executeTask(scanWifiTask);
-        mCurWifiTasks.add(scanWifiTask);
     }
 
     private void updateWifiSsidListFromScanResults(List<ScanResult> scanResults) {
@@ -350,7 +331,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private void updateConnectionInfo() {
         GetConnectionInfoTask getConnectionInfoTask = new GetConnectionInfoTask(mOnGetConnectionInfoCallback);
         EasyWifi.executeTask(getConnectionInfoTask);
-        mCurWifiTasks.add(getConnectionInfoTask);
     }
 
     @Override
@@ -360,7 +340,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         CheckIsAlreadyConnectedTask checkIsAlreadyConnectedTask = new CheckIsAlreadyConnectedTask(scanResult, mOnCheckIsAlreadyConnectedCallback);
         EasyWifi.executeTask(checkIsAlreadyConnectedTask);
-        mCurWifiTasks.add(checkIsAlreadyConnectedTask);
     }
 
 
@@ -371,14 +350,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK, mCurWifiTasks);
+        outState.putParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK, EasyWifi.getCurrentTasks());
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        for (WifiTask wifiTask : mCurWifiTasks) {
-            EasyWifi.cancelTask(wifiTask);
-        }
+        EasyWifi.cancelAllTasks();
     }
 }
