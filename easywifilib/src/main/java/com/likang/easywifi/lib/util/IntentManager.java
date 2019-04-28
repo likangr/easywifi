@@ -55,12 +55,12 @@ public class IntentManager {
         context.startActivity(intent);
     }
 
-    public static void gotoUserActionBridgeActivity(int stepCode, UserActionBridgeActivity.OnUserDoneCallback onUserDoneCallback) {
+    public static void gotoUserActionBridgeActivity(int stepCode, UserActionBridgeActivity.OnUserActionDoneCallback onUserDoneCallback) {
         Application application = ApplicationHolder.getApplication();
-        UserActionBridgeActivity.setOnUserDoneCallback(onUserDoneCallback);
+        UserActionBridgeActivity.setOnUserActionDoneCallback(onUserDoneCallback);
         Intent intent = new Intent(application, UserActionBridgeActivity.class);
-        intent.putExtra(UserActionBridgeActivity.INTENT_EXTRA_KEY_CALLBACK_ID, onUserDoneCallback.hashCode());
-        intent.putExtra(UserActionBridgeActivity.INTENT_EXTRA_KEY_STEP_CODE, stepCode);
+        intent.putExtra(UserActionBridgeActivity.INTENT_EXTRA_KEY_USER_ACTION_DONE_CALLBACK_ID, onUserDoneCallback.hashCode());
+        intent.putExtra(UserActionBridgeActivity.INTENT_EXTRA_KEY_USER_ACTION_CODE, stepCode);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         application.startActivity(intent);
     }

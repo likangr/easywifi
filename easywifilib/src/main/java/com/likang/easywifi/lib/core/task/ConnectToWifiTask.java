@@ -41,6 +41,20 @@ public class ConnectToWifiTask extends WifiTask {
     }
 
     public ConnectToWifiTask(long setWifiEnabledTimeout,
+                             String ssid,
+                             String bssid,
+                             long connectToWifiTimeout,
+                             WifiTaskCallback wifiTaskCallback) {
+        this(setWifiEnabledTimeout,
+                ssid,
+                bssid,
+                null,
+                WifiEncryptionScheme.ENCRYPTION_SCHEME_NONE,
+                connectToWifiTimeout,
+                wifiTaskCallback);
+    }
+
+    public ConnectToWifiTask(long setWifiEnabledTimeout,
                              ScanResult scanResult,
                              String password,
                              long connectToWifiTimeout,
@@ -55,15 +69,23 @@ public class ConnectToWifiTask extends WifiTask {
     }
 
     public ConnectToWifiTask(long setWifiEnabledTimeout,
+                             ScanResult scanResult,
                              long connectToWifiTimeout,
+                             WifiTaskCallback wifiTaskCallback) {
+        this(setWifiEnabledTimeout,
+                scanResult,
+                null,
+                connectToWifiTimeout,
+                wifiTaskCallback);
+    }
+
+    public ConnectToWifiTask(long setWifiEnabledTimeout,
                              WifiConfiguration wifiConfiguration,
+                             long connectToWifiTimeout,
                              WifiTaskCallback wifiTaskCallback) {
 
         super(wifiTaskCallback);
         mIsConnectToConfiguredWifi = true;
-        if (wifiConfiguration == null) {
-            return;
-        }
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
         mSsid = wifiConfiguration.SSID;
         mBssid = wifiConfiguration.BSSID;
@@ -71,29 +93,6 @@ public class ConnectToWifiTask extends WifiTask {
         mWifiConfiguration = wifiConfiguration;
     }
 
-
-    public ConnectToWifiTask(long setWifiEnabledTimeout,
-                             String ssid,
-                             String bssid,
-                             long connectToWifiTimeout,
-                             WifiTaskCallback wifiTaskCallback) {
-
-        this(setWifiEnabledTimeout,
-                connectToWifiTimeout,
-                EasyWifi.getConfiguredWifiConfiguration(ssid, bssid),
-                wifiTaskCallback);
-    }
-
-    public ConnectToWifiTask(long setWifiEnabledTimeout,
-                             ScanResult scanResult,
-                             long connectToWifiTimeout,
-                             WifiTaskCallback wifiTaskCallback) {
-        this(setWifiEnabledTimeout,
-                scanResult.SSID,
-                scanResult.BSSID,
-                connectToWifiTimeout,
-                wifiTaskCallback);
-    }
 
     protected ConnectToWifiTask(Parcel in) {
         super(in);
@@ -176,7 +175,7 @@ public class ConnectToWifiTask extends WifiTask {
 
         if (mIsConnectToConfiguredWifi) {
             if (mWifiConfiguration == null) {
-                throw new IllegalArgumentException("Your network information has not been configured or null");
+                throw new IllegalArgumentException("WifiConfiguration can not be null!");
             }
 
             if (mWifiConfiguration.networkId == -1) {
@@ -188,7 +187,7 @@ public class ConnectToWifiTask extends WifiTask {
                 throw new IllegalArgumentException("Ssid can not be empty!");
             }
 
-            if (TextUtils.isEmpty(mPassword)) {
+            if (!WifiEncryptionScheme.ENCRYPTION_SCHEME_NONE.equals(mEncryptionScheme) && TextUtils.isEmpty(mPassword)) {
                 throw new IllegalArgumentException("Password can not be empty!");
             }
 

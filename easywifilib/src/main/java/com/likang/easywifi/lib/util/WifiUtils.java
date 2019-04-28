@@ -62,6 +62,16 @@ public class WifiUtils {
         return wifiConfiguration.status == WifiConfiguration.Status.DISABLED;
     }
 
+    public static boolean isNeedPassword(WifiConfiguration wifiConfiguration) {
+        return !WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(wifiConfiguration).equals(WifiEncryptionScheme.ENCRYPTION_SCHEME_NONE);
+    }
+
+
+    public static boolean isNeedPassword(ScanResult scanResult) {
+        return !WifiEncryptionScheme.getEncryptionSchemeByScanResult(scanResult).equals(WifiEncryptionScheme.ENCRYPTION_SCHEME_NONE);
+    }
+
+
     public static boolean connectToConfiguredWifi(WifiManager wifiManager, int networkId) {
         return wifiManager.enableNetwork(networkId, true);
     }

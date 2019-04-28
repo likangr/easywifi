@@ -24,16 +24,17 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
 
     private static final String TAG = "UserActionBridgeActivity";
 
-    public static final int STEP_CODE_ENABLE_LOCATION_MODULE = 1;
-    public static final int STEP_CODE_REQUEST_LOCATION_PERMISSION = 2;
-    public static final int STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION = 3;
+    public static final int USER_ACTION_CODE_ENABLE_LOCATION_MODULE = 1;
+    public static final int USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION = 2;
+    public static final int USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION = 3;
+    public static final int USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION = 4;
 
-    public static final String INTENT_EXTRA_KEY_STEP_CODE = "step_code";
-    public static final String INTENT_EXTRA_KEY_CALLBACK_ID = "callback_id";
+    public static final String INTENT_EXTRA_KEY_USER_ACTION_CODE = "user_action_code";
+    public static final String INTENT_EXTRA_KEY_USER_ACTION_DONE_CALLBACK_ID = "user_action_done_callback_id";
 
-    private static HashMap<Integer, OnUserDoneCallback> sOnUserDoneCallbacks;
-    private int mCallbackId;
-    private int mStepCode;
+    private static HashMap<Integer, OnUserActionDoneCallback> sOnUserActionDoneCallbacks;
+    private int mUserActionDoneCallbackId;
+    private int mUserActionCode;
     private boolean mIsFirstOnResume = true;
 
     @Override
@@ -45,30 +46,35 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
         }
 
         Intent intent = getIntent();
-        mCallbackId = intent.getIntExtra(INTENT_EXTRA_KEY_CALLBACK_ID, 0);
-        mStepCode = intent.getIntExtra(INTENT_EXTRA_KEY_STEP_CODE, 0);
+        mUserActionDoneCallbackId = intent.getIntExtra(INTENT_EXTRA_KEY_USER_ACTION_DONE_CALLBACK_ID, 0);
+        mUserActionCode = intent.getIntExtra(INTENT_EXTRA_KEY_USER_ACTION_CODE, 0);
 
-        switch (mStepCode) {
-            case STEP_CODE_ENABLE_LOCATION_MODULE:
+        switch (mUserActionCode) {
+            case USER_ACTION_CODE_ENABLE_LOCATION_MODULE:
                 IntentManager.gotoLocationSettings(this);
-                UserActionGuideToast.showGuideToast(this, "需要打开位置信息服务",
+                UserActionGuideToast.showGuideToast(this, "需要打开「位置信息服务」",
                         "操作指南：\n找到「位置信息/定位」相关按钮并打开对应开关", Toast.LENGTH_LONG);
                 break;
-            case STEP_CODE_REQUEST_LOCATION_PERMISSION:
+            case USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION:
                 if (LocationUtils.userRejectedLocationPermissionsAndCheckedNoLongerAskOption(this)) {
                     IntentManager.gotoSelfPermissionSetting(this);
-                    UserActionGuideToast.showGuideToast(this, "需要获取位置权限",
+                    UserActionGuideToast.showGuideToast(this, "需要「位置信息权限」",
                             "操作指南：\n进入「权限」设置，找到「位置信息/定位」相关按钮并打开对应开关", Toast.LENGTH_LONG);
                 } else {
                     PermissionsManager.request(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    Manifest.permission.ACCESS_FINE_LOCATION}, STEP_CODE_REQUEST_LOCATION_PERMISSION,
+                                    Manifest.permission.ACCESS_FINE_LOCATION}, USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION,
                             this, this);
                 }
                 break;
-            case STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION:
+            case USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION:
                 IntentManager.gotoSelfPermissionSetting(this);
-                UserActionGuideToast.showGuideToast(this, "需要获取WIFI操作权限",
+                UserActionGuideToast.showGuideToast(this, "需要「WIFI操作权限」",
                         "操作指南：\n进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」相关按钮并打开对应开关", Toast.LENGTH_LONG);
+                break;
+            case USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION:
+                IntentManager.gotoSelfPermissionSetting(this);
+                UserActionGuideToast.showGuideToast(this, "需要「WIFI操作权限」和「位置信息权限」",
+                        "操作指南：\n进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」及「位置信息/定位」相关按钮并打开对应开关", Toast.LENGTH_LONG);
                 break;
             default:
                 break;
@@ -88,22 +94,24 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
 
     private boolean checkUserDoneIsWeExcepted() {
         boolean userDoneIsWeExcepted = false;
-        if (mStepCode == STEP_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION) {
+        if (mUserActionCode == USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION) {
             userDoneIsWeExcepted = WifiUtils.checkHasChangeWifiStatePermission(EasyWifi.getWifiManager());
-        } else if (mStepCode == STEP_CODE_REQUEST_LOCATION_PERMISSION) {
+        } else if (mUserActionCode == USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION) {
             userDoneIsWeExcepted = LocationUtils.checkHasLocationPermissions();
-        } else if (mStepCode == STEP_CODE_ENABLE_LOCATION_MODULE) {
+        } else if (mUserActionCode == USER_ACTION_CODE_ENABLE_LOCATION_MODULE) {
             userDoneIsWeExcepted = LocationUtils.isLocationEnabled();
+        } else if (mUserActionCode == USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION) {
+            userDoneIsWeExcepted = WifiUtils.checkHasChangeWifiStatePermission(EasyWifi.getWifiManager()) && LocationUtils.checkHasLocationPermissions();
         }
         return userDoneIsWeExcepted;
     }
 
 
-    public static void setOnUserDoneCallback(OnUserDoneCallback onUserDoneCallback) {
-        if (sOnUserDoneCallbacks == null) {
-            sOnUserDoneCallbacks = new HashMap<>(2);
+    public static void setOnUserActionDoneCallback(OnUserActionDoneCallback onUserActionDoneCallback) {
+        if (sOnUserActionDoneCallbacks == null) {
+            sOnUserActionDoneCallbacks = new HashMap<>(5);
         }
-        sOnUserDoneCallbacks.put(onUserDoneCallback.hashCode(), onUserDoneCallback);
+        sOnUserActionDoneCallbacks.put(onUserActionDoneCallback.hashCode(), onUserActionDoneCallback);
     }
 
     @Override
@@ -115,7 +123,7 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
     @Override
     public void onResult(int reqCode, String[] permissions, boolean result, int[] grantResults) {
 
-        if (reqCode == STEP_CODE_REQUEST_LOCATION_PERMISSION) {
+        if (reqCode == USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION) {
             invokeCallback(result);
         }
     }
@@ -123,22 +131,22 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
     private void invokeCallback(boolean userDoneIsWeExcepted) {
         finish();
         try {
-            OnUserDoneCallback onUserDoneCallback = sOnUserDoneCallbacks.get(mCallbackId);
+            OnUserActionDoneCallback onUserDoneCallback = sOnUserActionDoneCallbacks.get(mUserActionDoneCallbackId);
             if (userDoneIsWeExcepted) {
-                onUserDoneCallback.onUserDoneIsWeExcepted(mStepCode);
+                onUserDoneCallback.onUserActionDoneIsWeExcepted();
             } else {
-                onUserDoneCallback.onUserDoneIsNotWeExcepted(mStepCode);
+                onUserDoneCallback.onUserActionDoneIsNotWeExcepted();
             }
         } finally {
-            sOnUserDoneCallbacks.remove(mCallbackId);
+            sOnUserActionDoneCallbacks.remove(mUserActionDoneCallbackId);
         }
     }
 
-    public interface OnUserDoneCallback {
+    public interface OnUserActionDoneCallback {
 
-        void onUserDoneIsWeExcepted(int stepCode);
+        void onUserActionDoneIsWeExcepted();
 
-        void onUserDoneIsNotWeExcepted(int stepCode);
+        void onUserActionDoneIsNotWeExcepted();
     }
 
 }

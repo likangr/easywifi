@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             int failReason = wifiTask.getFailReason();
             Logger.d(TAG, "onTaskFail failReason=" + failReason);
             setPbVisible(false);
-            if (failReason == EasyWifi.TASK_FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
+            if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
                 Toast.makeText(MainActivity.this, "密码错误，请重新输入", Toast.LENGTH_SHORT).show();
                 showPwdDialog(null, wifiTask.getWifiConfiguration());
             }
@@ -183,15 +183,25 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                     if (!configuredWifiPasswordIsWrong[0]) {
                         ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
-                                EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
                                 configuredWifiConfiguration,
+                                EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
                                 mOnConnectToWifiCallback);
                         EasyWifi.executeTask(connectToWifiTask);
-                        return;
+                    } else {
+                        showPwdDialog(null, configuredWifiConfiguration);
                     }
-                }
+                } else {
+                    if (WifiUtils.isNeedPassword(scanResult)) {
+                        showPwdDialog(scanResult, null);
+                    } else {
+                        ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
+                                scanResult,
+                                EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
+                                mOnConnectToWifiCallback);
+                        EasyWifi.executeTask(connectToWifiTask);
+                    }
 
-                showPwdDialog(scanResult, configuredWifiConfiguration);
+                }
 
             }
         }
@@ -223,8 +233,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                             } else {
 
                                 ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
-                                        EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
                                         configuredWifiConfiguration,
+                                        EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
                                         mOnConnectToWifiCallback);
                                 EasyWifi.executeTask(connectToWifiTask);
                             }
