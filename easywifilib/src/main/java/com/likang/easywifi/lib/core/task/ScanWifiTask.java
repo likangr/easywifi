@@ -21,7 +21,6 @@ import com.likang.easywifi.lib.util.IntentManager;
 public class ScanWifiTask extends WifiTask {
 
     private long mScanWifiTimeout;
-    private long mSetWifiEnabledTimeout;
     private int mScanWifiWay;
     private boolean mIsAutoSwitchToThroughSystemWifi;
 
@@ -32,7 +31,6 @@ public class ScanWifiTask extends WifiTask {
                         WifiTaskCallback wifiTaskCallback) {
         super(wifiTaskCallback);
         mScanWifiTimeout = scanWifiTimeout;
-        mSetWifiEnabledTimeout = setWifiEnabledTimeout;
         mScanWifiWay = scanWifiWay;
         mIsAutoSwitchToThroughSystemWifi = isAutoSwitchToThroughSystemWifi;
     }
@@ -41,7 +39,6 @@ public class ScanWifiTask extends WifiTask {
     protected ScanWifiTask(Parcel in) {
         super(in);
         mScanWifiTimeout = in.readLong();
-        mSetWifiEnabledTimeout = in.readLong();
         mScanWifiWay = in.readInt();
         mIsAutoSwitchToThroughSystemWifi = in.readByte() == 1;
     }
@@ -53,14 +50,6 @@ public class ScanWifiTask extends WifiTask {
 
     public void setScanWifiTimeout(long scanWifiTimeout) {
         mScanWifiTimeout = scanWifiTimeout;
-    }
-
-    public long getSetWifiEnabledTimeout() {
-        return mSetWifiEnabledTimeout;
-    }
-
-    public void setSetWifiEnabledTimeout(long setWifiEnabledTimeout) {
-        mSetWifiEnabledTimeout = setWifiEnabledTimeout;
     }
 
     public int getScanWifiWay() {
@@ -83,9 +72,6 @@ public class ScanWifiTask extends WifiTask {
     @Override
     void checkParams() {
 
-        if (mSetWifiEnabledTimeout < 0) {
-            throw new IllegalArgumentException("SetWifiEnabledTimeout must more than 0!");
-        }
         if (mScanWifiTimeout < 0) {
             throw new IllegalArgumentException("ScanWifiTimeout must more than 0!");
         }
@@ -119,7 +105,6 @@ public class ScanWifiTask extends WifiTask {
     public void writeToParcel(Parcel dest, int flags) {
         super.writeToParcel(dest, flags);
         dest.writeLong(mScanWifiTimeout);
-        dest.writeLong(mSetWifiEnabledTimeout);
         dest.writeInt(mScanWifiWay);
         dest.writeByte((byte) (mIsAutoSwitchToThroughSystemWifi ? 1 : 0));
     }
@@ -128,7 +113,6 @@ public class ScanWifiTask extends WifiTask {
     public String toString() {
         return "ScanWifiTask{" +
                 "mScanWifiTimeout=" + mScanWifiTimeout +
-                ", mSetWifiEnabledTimeout=" + mSetWifiEnabledTimeout +
                 ", mScanWifiWay=" + mScanWifiWay +
                 ", mIsAutoSwitchToThroughSystemWifi=" + mIsAutoSwitchToThroughSystemWifi +
                 ", mWifiTaskCallback=" + mWifiTaskCallback +

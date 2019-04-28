@@ -50,7 +50,7 @@ public class WifiEncryptionScheme {
                 if (isHexWepKey(password)) {
                     wifiConfiguration.wepKeys[0] = password;
                 } else {
-                    wifiConfiguration.wepKeys[0] = WifiUtils.enclosedInDoubleQuotationMarks(password);
+                    wifiConfiguration.wepKeys[0] = StringUtils.enclosedInDoubleQuotationMarks(password);
                 }
                 break;
             case ENCRYPTION_SCHEME_PSK:
@@ -66,7 +66,7 @@ public class WifiEncryptionScheme {
                 if (password.matches("[0-9A-Fa-f]{64}")) {
                     wifiConfiguration.preSharedKey = password;
                 } else {
-                    wifiConfiguration.preSharedKey = WifiUtils.enclosedInDoubleQuotationMarks(password);
+                    wifiConfiguration.preSharedKey = StringUtils.enclosedInDoubleQuotationMarks(password);
                 }
                 break;
             case ENCRYPTION_SCHEME_EAP:
@@ -80,7 +80,7 @@ public class WifiEncryptionScheme {
                 wifiConfiguration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP);
                 wifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_EAP);
                 wifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.IEEE8021X);
-                wifiConfiguration.preSharedKey = WifiUtils.enclosedInDoubleQuotationMarks(password);
+                wifiConfiguration.preSharedKey = StringUtils.enclosedInDoubleQuotationMarks(password);
                 break;
 
             default:

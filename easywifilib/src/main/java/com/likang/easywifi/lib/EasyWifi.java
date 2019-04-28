@@ -24,6 +24,7 @@ import com.likang.easywifi.lib.util.ApplicationHolder;
 import com.likang.easywifi.lib.util.IntentManager;
 import com.likang.easywifi.lib.util.LocationUtils;
 import com.likang.easywifi.lib.util.Logger;
+import com.likang.easywifi.lib.util.StringUtils;
 import com.likang.easywifi.lib.util.WifiUtils;
 
 import java.util.ArrayList;
@@ -68,12 +69,15 @@ public final class EasyWifi {
     public static final int FAIL_REASON_CONNECT_TO_WIFI_NOT_OBTAINED_IP_ADDR = 10;
     public static final int FAIL_REASON_CONNECT_TO_WIFI_IS_POOR_LINK = 11;
     public static final int FAIL_REASON_CONNECT_TO_WIFI_TIMEOUT = 12;
+    public static final int FAIL_REASON_CONNECT_TO_WIFI_UNKNOWN = 13;
+    public static final int FAIL_REASON_CONNECT_TO_WIFI_ARGUMENTS_ERROR = 14;
+    public static final int FAIL_REASON_CONNECT_TO_WIFI_MUST_THROUGH_SYSTEM_WIFI_SETTING = 15;
 
-    public static final int FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED = 13;
-    public static final int FAIL_REASON_SCAN_WIFI_TIMEOUT = 14;
-    public static final int FAIL_REASON_SCAN_WIFI_UNKNOWN = 15;
+    public static final int FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED = 16;
+    public static final int FAIL_REASON_SCAN_WIFI_TIMEOUT = 17;
+    public static final int FAIL_REASON_SCAN_WIFI_UNKNOWN = 18;
 
-    public static final int FAIL_REASON_NOT_HAS_WIFI_AND_LOCATION_PERMISSION = 16;
+    public static final int FAIL_REASON_NOT_HAS_WIFI_AND_LOCATION_PERMISSION = 19;
 
     public static final int CURRENT_STEP_CHECK_LOCATION_MODULE_IS_EXIST = 1;
     public static final int CURRENT_STEP_CHECK_LOCATION_ENABLED = 2;
@@ -90,10 +94,10 @@ public final class EasyWifi {
     public static final int CURRENT_STEP_CHECK_WIFI_AND_LOCATION_PERMISSION = 11;
     public static final int CURRENT_STEP_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION = 12;
 
-    public static final int CONNECTING_DETAIL_AUTHENTICATING = 1;
-    public static final int CONNECTING_DETAIL_OBTAINING_IP_ADDR = 2;
-    public static final int CONNECTING_DETAIL_VERIFYING_POOR_LINK = 3;
-    public static final int CONNECTING_DETAIL_CAPTIVE_PORTAL_CHECK = 4;
+    public static final int CURRENT_STEP_AUTHENTICATING = 13;
+    public static final int CURRENT_STEP_OBTAINING_IP_ADDR = 14;
+    public static final int CURRENT_STEP_VERIFYING_POOR_LINK = 15;
+    public static final int CURRENT_STEP_CAPTIVE_PORTAL_CHECK = 16;
 
     public static final int SCAN_WIFI_WAY_INITIATIVE = 1;
     public static final int SCAN_WIFI_WAY_THROUGH_WIFI_SETTING = 2;
@@ -190,6 +194,7 @@ public final class EasyWifi {
         return getConfiguredWifiConfiguration(scanResult.SSID, scanResult.BSSID);
     }
 
+
     /**
      * @param ssid
      * @param bssid
@@ -202,7 +207,7 @@ public final class EasyWifi {
         }
 
         boolean bssidValid = !TextUtils.isEmpty(bssid);
-        String enclosedInDoubleQuotationMarksSsid = WifiUtils.enclosedInDoubleQuotationMarks(ssid);
+        String enclosedInDoubleQuotationMarksSsid = StringUtils.enclosedInDoubleQuotationMarks(ssid);
 
         WifiConfiguration configuredWifiConfiguration = null;
         List<WifiConfiguration> wifiConfigurations = getConfiguredNetworks();
@@ -430,7 +435,7 @@ public final class EasyWifi {
     /**
      * @param connectToWifiTask
      */
-    public static void connectToConfiguredWifi(final ConnectToWifiTask connectToWifiTask) {
+    public static void connectToWifi(final ConnectToWifiTask connectToWifiTask) {
 
         connectToWifiTask.callOnTaskStartRun();
 
@@ -444,9 +449,32 @@ public final class EasyWifi {
             @Override
             public void onPrepareSuccess() {
 
-                if (WifiUtils.isAlreadyConnected(connectToWifiTask.getWifiConfiguration().SSID, connectToWifiTask.getWifiConfiguration().BSSID, sWifiManager)) {
-                    connectToWifiTask.callOnTaskSuccess();
-                    return;
+                if (connectToWifiTask.isConnectToConfiguredWifi() && !connectToWifiTask.isNeedUpdateWifiConfiguration()) {
+
+                    if (WifiUtils.isAlreadyConnected(connectToWifiTask.getWifiConfiguration().SSID, connectToWifiTask.getWifiConfiguration().BSSID, sWifiManager)) {
+                        connectToWifiTask.callOnTaskSuccess();
+                        return;
+                    }
+
+                } else {
+
+                    if (connectToWifiTask.isNeedUpdateWifiConfiguration()) {
+                        boolean removeNetworkResult = sWifiManager.removeNetwork(connectToWifiTask.getWifiConfiguration().networkId);
+                        if (!removeNetworkResult) {
+                            connectToWifiTask.callOnTaskFail(FAIL_REASON_CONNECT_TO_WIFI_MUST_THROUGH_SYSTEM_WIFI_SETTING);
+                            return;
+                        }
+                    }
+
+                    WifiConfiguration wifiConfiguration = WifiUtils.addNetWork(sWifiManager,
+                            connectToWifiTask.getSsid(), connectToWifiTask.getBssid(),
+                            connectToWifiTask.getPassword(), connectToWifiTask.getEncryptionScheme());
+
+                    if (wifiConfiguration.networkId == -1) {
+                        connectToWifiTask.callOnTaskFail(FAIL_REASON_CONNECT_TO_WIFI_ARGUMENTS_ERROR);
+                        return;
+                    }
+                    connectToWifiTask.setWifiConfiguration(wifiConfiguration);
                 }
 
                 //fixme android p (nokia x6) onConnectToWifiStart lock.
@@ -455,12 +483,13 @@ public final class EasyWifi {
                 if (requestConnectToWifiResult) {
                     //note: connect to wifi is not timely.
 
-                    final boolean[] authenticatingIsReceived = {false};
-                    final boolean[] obtainingIpAddrIsReceived = {false};
-                    final boolean[] verifyingPoorLinkIsReceived = {false};
-                    final boolean[] captivePortalCheckIsReceived = {false};
-
                     connectToWifiTask.setBroadcastReceiver(new BroadcastReceiver() {
+
+                        boolean authenticatingIsReceived = false;
+                        boolean obtainingIpAddrIsReceived = false;
+                        boolean verifyingPoorLinkIsReceived = false;
+                        boolean captivePortalCheckIsReceived = false;
+
                         @Override
                         public void onReceive(Context context, Intent intent) {
                             NetworkInfo networkInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
@@ -481,37 +510,42 @@ public final class EasyWifi {
 
 
                                 case AUTHENTICATING:
-                                    if (!authenticatingIsReceived[0]) {
-                                        authenticatingIsReceived[0] = true;
-                                        connectToWifiTask.callOnTaskRunningCurrentStep(CONNECTING_DETAIL_AUTHENTICATING);
+                                    if (!authenticatingIsReceived) {
+                                        authenticatingIsReceived = true;
+                                        connectToWifiTask.callOnTaskRunningCurrentStep(CURRENT_STEP_AUTHENTICATING);
                                     }
                                     break;
                                 case OBTAINING_IPADDR:
-                                    if (!obtainingIpAddrIsReceived[0]) {
-                                        obtainingIpAddrIsReceived[0] = true;
-                                        connectToWifiTask.callOnTaskRunningCurrentStep(CONNECTING_DETAIL_OBTAINING_IP_ADDR);
+                                    if (!obtainingIpAddrIsReceived) {
+                                        obtainingIpAddrIsReceived = true;
+                                        connectToWifiTask.callOnTaskRunningCurrentStep(CURRENT_STEP_OBTAINING_IP_ADDR);
                                     }
                                     break;
                                 case VERIFYING_POOR_LINK:
-                                    if (!verifyingPoorLinkIsReceived[0]) {
-                                        verifyingPoorLinkIsReceived[0] = true;
+                                    if (!verifyingPoorLinkIsReceived) {
+                                        verifyingPoorLinkIsReceived = true;
                                         //Temporary shutdown (network down)
-                                        connectToWifiTask.callOnTaskRunningCurrentStep(CONNECTING_DETAIL_VERIFYING_POOR_LINK);
+                                        connectToWifiTask.callOnTaskRunningCurrentStep(CURRENT_STEP_VERIFYING_POOR_LINK);
                                     }
                                     break;
                                 case CAPTIVE_PORTAL_CHECK:
-                                    if (!captivePortalCheckIsReceived[0]) {
-                                        captivePortalCheckIsReceived[0] = true;
+                                    if (!captivePortalCheckIsReceived) {
+                                        captivePortalCheckIsReceived = true;
                                         //Determine whether a browser login is required
-                                        connectToWifiTask.callOnTaskRunningCurrentStep(CONNECTING_DETAIL_CAPTIVE_PORTAL_CHECK);
+                                        connectToWifiTask.callOnTaskRunningCurrentStep(CURRENT_STEP_CAPTIVE_PORTAL_CHECK);
                                     }
                                     break;
 
                                 //CONNECTED
                                 case CONNECTED:
-                                    if (authenticatingIsReceived[0]) {
+                                    if (obtainingIpAddrIsReceived) {
                                         unregisterReceiver();
-                                        connectToWifiTask.callOnTaskSuccess();
+                                        if (WifiUtils.isAlreadyConnected(connectToWifiTask.getWifiConfiguration().SSID,
+                                                connectToWifiTask.getWifiConfiguration().BSSID, sWifiManager)) {
+                                            connectToWifiTask.callOnTaskSuccess();
+                                        } else {
+                                            connectToWifiTask.callOnTaskFail(FAIL_REASON_CONNECT_TO_WIFI_UNKNOWN);
+                                        }
                                     }
                                     break;
 
@@ -525,17 +559,17 @@ public final class EasyWifi {
 
                                 //DISCONNECTED
                                 case DISCONNECTED:
-                                    if (verifyingPoorLinkIsReceived[0]) {
+                                    if (verifyingPoorLinkIsReceived) {
                                         unregisterReceiver();
                                         connectToWifiTask.callOnTaskFail(FAIL_REASON_CONNECT_TO_WIFI_IS_POOR_LINK);
                                         break;
                                     }
-                                    if (obtainingIpAddrIsReceived[0]) {
+                                    if (obtainingIpAddrIsReceived) {
                                         unregisterReceiver();
                                         connectToWifiTask.callOnTaskFail(FAIL_REASON_CONNECT_TO_WIFI_NOT_OBTAINED_IP_ADDR);
                                         break;
                                     }
-                                    if (authenticatingIsReceived[0]) {
+                                    if (authenticatingIsReceived) {
                                         unregisterReceiver();
                                         connectToWifiTask.callOnTaskFail(FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING);
                                     }
@@ -589,19 +623,6 @@ public final class EasyWifi {
             }
         });
 
-
-    }
-
-    /**
-     * @param connectToWifiTask
-     */
-    public static void connectToUnConfiguredWifi(ConnectToWifiTask connectToWifiTask) {
-
-        //fixme if !bssidValid,  is hidden.
-
-        WifiConfiguration configuration = WifiUtils.addNetWork(sWifiManager, connectToWifiTask.getSsid(), connectToWifiTask.getBssid(), connectToWifiTask.getPassword(), connectToWifiTask.getEncryptionScheme());
-        connectToWifiTask.setWifiConfiguration(configuration);
-        connectToConfiguredWifi(connectToWifiTask);
 
     }
 
@@ -683,9 +704,9 @@ public final class EasyWifi {
                                         OnPrepareCallback onPrepareCallback) {
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
-            checkAndEnableLocationAndNext(scanWifiTask, scanWifiTask.getSetWifiEnabledTimeout(), onPrepareCallback);
+            checkAndEnableLocationAndNext(scanWifiTask, TIME_OUT_SET_WIFI_ENABLED_DEFAULT, onPrepareCallback);
         } else {
-            checkWifiEnabledAndNext(scanWifiTask, true, scanWifiTask.getSetWifiEnabledTimeout(), onPrepareCallback);
+            checkWifiEnabledAndNext(scanWifiTask, true, TIME_OUT_SET_WIFI_ENABLED_DEFAULT, onPrepareCallback);
         }
     }
 
@@ -699,9 +720,9 @@ public final class EasyWifi {
     private static void connectToWifiPrepare(ConnectToWifiTask connectToWifiTask,
                                              OnPrepareCallback onPrepareCallback) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
-            checkAndEnableLocationAndNext(connectToWifiTask, connectToWifiTask.getSetWifiEnabledTimeout(), onPrepareCallback);
+            checkAndEnableLocationAndNext(connectToWifiTask, TIME_OUT_SET_WIFI_ENABLED_DEFAULT, onPrepareCallback);
         } else {
-            checkAndGuideUserGrantWifiPermissionAndNext(connectToWifiTask, true, connectToWifiTask.getSetWifiEnabledTimeout(), onPrepareCallback);
+            checkAndGuideUserGrantWifiPermissionAndNext(connectToWifiTask, true, TIME_OUT_SET_WIFI_ENABLED_DEFAULT, onPrepareCallback);
         }
     }
 

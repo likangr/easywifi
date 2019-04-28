@@ -27,6 +27,8 @@ import com.likang.easywifi.lib.core.task.SetWifiEnabledTask;
 import com.likang.easywifi.lib.core.task.WifiTask;
 import com.likang.easywifi.lib.core.task.WifiTaskCallback;
 import com.likang.easywifi.lib.util.Logger;
+import com.likang.easywifi.lib.util.StringUtils;
+import com.likang.easywifi.lib.util.WifiEncryptionScheme;
 import com.likang.easywifi.lib.util.WifiUtils;
 
 import java.util.ArrayList;
@@ -112,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         public void onTaskSuccess(GetConnectionInfoTask wifiTask) {
             WifiInfo wifiInfo = wifiTask.getWifiInfo();
             Logger.d(TAG, "onTaskSuccess wifiInfo=" + wifiInfo);
-            mTvConnectionInfo.setText(String.format("connection info: %s %s", wifiInfo.getSSID(), wifiInfo.getBSSID()));
+            mTvConnectionInfo.setText(String.format("connection info: %s %s %s", StringUtils.removeQuotationMarks(wifiInfo.getSSID()), wifiInfo.getBSSID(), wifiInfo.getSupplicantState()));
         }
 
         @Override
@@ -147,9 +149,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             int failReason = wifiTask.getFailReason();
             Logger.d(TAG, "onTaskFail failReason=" + failReason);
             setPbVisible(false);
+            updateConnectionInfo();
             if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
                 Toast.makeText(MainActivity.this, "密码错误，请重新输入", Toast.LENGTH_SHORT).show();
-                showPwdDialog(null, wifiTask.getWifiConfiguration());
+                showPwdDialog(null, wifiTask.getWifiConfiguration(), WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(wifiTask.getWifiConfiguration()));
+            } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_MUST_THROUGH_SYSTEM_WIFI_SETTING) {
+                Toast.makeText(MainActivity.this, "无法连接此网络，需要您在系统WIFI设置中连接", Toast.LENGTH_SHORT).show();
             }
         }
 
@@ -175,27 +180,41 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             if (!isAlreadyConnected) {
 
-                final WifiConfiguration configuredWifiConfiguration = EasyWifi.getConfiguredWifiConfiguration(scanResult);
-                final boolean[] configuredWifiPasswordIsWrong = {false};
+                WifiConfiguration configuredWifiConfiguration = EasyWifi.getConfiguredWifiConfiguration(scanResult);
                 if (configuredWifiConfiguration != null) {
 
-                    configuredWifiPasswordIsWrong[0] = WifiUtils.isConfiguredWifiPasswordIsWrong(configuredWifiConfiguration);
+                    boolean isNeedUpdateWifiConfiguration = false;
+                    String newEncryptionScheme = WifiEncryptionScheme.getEncryptionSchemeByScanResult(scanResult);
+                    if (newEncryptionScheme.equals(WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(configuredWifiConfiguration))
+                            || WifiUtils.configuredWifiPasswordIsWrong(configuredWifiConfiguration)) {
+                        isNeedUpdateWifiConfiguration = true;
+                    }
 
-                    if (!configuredWifiPasswordIsWrong[0]) {
-                        ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
-                                configuredWifiConfiguration,
+                    if (isNeedUpdateWifiConfiguration) {
+
+                        if (WifiUtils.isNeedPassword(scanResult)) {
+                            showPwdDialog(null, configuredWifiConfiguration, newEncryptionScheme);
+                        } else {
+                            ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(configuredWifiConfiguration,
+                                    true, null,
+                                    WifiEncryptionScheme.ENCRYPTION_SCHEME_NONE,
+                                    EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
+                                    mOnConnectToWifiCallback);
+                            EasyWifi.executeTask(connectToWifiTask);
+                        }
+
+                    } else {
+                        ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(configuredWifiConfiguration,
                                 EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
                                 mOnConnectToWifiCallback);
                         EasyWifi.executeTask(connectToWifiTask);
-                    } else {
-                        showPwdDialog(null, configuredWifiConfiguration);
                     }
+
                 } else {
                     if (WifiUtils.isNeedPassword(scanResult)) {
-                        showPwdDialog(scanResult, null);
+                        showPwdDialog(scanResult, null, null);
                     } else {
-                        ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
-                                scanResult,
+                        ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(scanResult,
                                 EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
                                 mOnConnectToWifiCallback);
                         EasyWifi.executeTask(connectToWifiTask);
@@ -215,7 +234,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     };
 
-    private void showPwdDialog(final ScanResult scanResult, final WifiConfiguration configuredWifiConfiguration) {
+    private void showPwdDialog(final ScanResult scanResult, final WifiConfiguration configuredWifiConfiguration, final String encryptionScheme) {
         final EditText editText = new EditText(MainActivity.this);
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this).setTitle(String.format("请输入%s的密码",
                 scanResult != null ? scanResult.SSID : configuredWifiConfiguration.SSID)).setView(editText)
@@ -225,22 +244,16 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         String password = editText.getText().toString().trim();
 
                         if (configuredWifiConfiguration != null) {
-                            int updateNetwork = WifiUtils.updateConfiguredWifiPassword(EasyWifi.getWifiManager(), configuredWifiConfiguration, password);
 
-                            if (updateNetwork == -1) {
-                                //don't has update permission.
-                                Toast.makeText(MainActivity.this, "需要您在系统设置中修改wifi密码", Toast.LENGTH_SHORT).show();
-                            } else {
-
-                                ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
-                                        configuredWifiConfiguration,
-                                        EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
-                                        mOnConnectToWifiCallback);
-                                EasyWifi.executeTask(connectToWifiTask);
-                            }
+                            ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(configuredWifiConfiguration,
+                                    true, password,
+                                    encryptionScheme,
+                                    EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
+                                    mOnConnectToWifiCallback);
+                            EasyWifi.executeTask(connectToWifiTask);
 
                         } else {
-                            ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
+                            ConnectToWifiTask connectToWifiTask = new ConnectToWifiTask(
                                     scanResult,
                                     password,
                                     EasyWifi.TIME_OUT_CONNECT_TO_WIFI_DEFAULT,
