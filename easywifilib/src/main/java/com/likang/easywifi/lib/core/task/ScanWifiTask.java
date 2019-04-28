@@ -1,6 +1,5 @@
 package com.likang.easywifi.lib.core.task;
 
-import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
@@ -30,7 +29,6 @@ public class ScanWifiTask extends WifiTask {
                         long setWifiEnabledTimeout,
                         int scanWifiWay,
                         boolean isAutoSwitchToThroughSystemWifi,
-                        Activity singleTaskActivity,
                         WifiTaskCallback wifiTaskCallback) {
         super(wifiTaskCallback);
         mScanWifiTimeout = scanWifiTimeout;
