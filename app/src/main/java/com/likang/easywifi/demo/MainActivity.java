@@ -149,7 +149,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             setPbVisible(false);
             if (failReason == EasyWifi.TASK_FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
                 Toast.makeText(MainActivity.this, "密码错误，请重新输入", Toast.LENGTH_SHORT).show();
-                showPsdDialog(null, wifiTask.getWifiConfiguration());
+                showPwdDialog(null, wifiTask.getWifiConfiguration());
             }
         }
 
@@ -191,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     }
                 }
 
-                showPsdDialog(scanResult, configuredWifiConfiguration);
+                showPwdDialog(scanResult, configuredWifiConfiguration);
 
             }
         }
@@ -205,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     };
 
-    private void showPsdDialog(final ScanResult scanResult, final WifiConfiguration configuredWifiConfiguration) {
+    private void showPwdDialog(final ScanResult scanResult, final WifiConfiguration configuredWifiConfiguration) {
         final EditText editText = new EditText(MainActivity.this);
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this).setTitle(String.format("请输入%s的密码",
                 scanResult != null ? scanResult.SSID : configuredWifiConfiguration.SSID)).setView(editText)
@@ -312,7 +312,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
                 EasyWifi.SCAN_WIFI_WAY_INITIATIVE,
                 true,
-                this,
                 mOnScanWifiCallback);
 
         EasyWifi.executeTask(scanWifiTask);
