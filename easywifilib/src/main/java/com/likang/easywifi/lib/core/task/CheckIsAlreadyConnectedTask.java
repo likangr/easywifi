@@ -51,7 +51,7 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
         mScanResult = scanResult;
     }
 
-    protected CheckIsAlreadyConnectedTask(Parcel in) {
+    private CheckIsAlreadyConnectedTask(Parcel in) {
         super(in);
         mSsid = in.readString();
         mBssid = in.readString();

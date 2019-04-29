@@ -20,7 +20,7 @@ public class SetWifiEnabledTask extends WifiTask {
         mSetWifiEnabledTimeout = setWifiEnabledTimeout;
     }
 
-    protected SetWifiEnabledTask(Parcel in) {
+    private SetWifiEnabledTask(Parcel in) {
         super(in);
         mEnabled = in.readByte() == 1;
         mSetWifiEnabledTimeout = in.readLong();

@@ -17,6 +17,7 @@ import android.text.TextUtils;
 import com.likang.easywifi.lib.core.guid.UserActionBridgeActivity;
 import com.likang.easywifi.lib.core.task.ConnectToWifiTask;
 import com.likang.easywifi.lib.core.task.GetConnectionInfoTask;
+import com.likang.easywifi.lib.core.task.GetWifiPermissionTask;
 import com.likang.easywifi.lib.core.task.ScanWifiTask;
 import com.likang.easywifi.lib.core.task.SetWifiEnabledTask;
 import com.likang.easywifi.lib.core.task.WifiTask;
@@ -224,35 +225,6 @@ public final class EasyWifi {
         return configuredWifiConfiguration;
     }
 
-
-    /**
-     * @param wifiTask
-     */
-    public static void executeTask(WifiTask wifiTask) {
-        checkIsInitialised();
-        wifiTask.run();
-    }
-
-    public static void cancelTask(WifiTask wifiTask) {
-        checkIsInitialised();
-        wifiTask.cancel();
-    }
-
-    public static ArrayList<WifiTask> getCurrentTasks() {
-        checkIsInitialised();
-        return CUR_WIFI_TASKS;
-    }
-
-
-    public static void cancelAllTasks() {
-        Iterator<WifiTask> iterator = CUR_WIFI_TASKS.iterator();
-        while (iterator.hasNext()) {
-            iterator.next().cancel();
-        }
-    }
-
-    /****internal****/
-
     /**
      * @param onFixPermissionsCallback
      */
@@ -317,6 +289,58 @@ public final class EasyWifi {
         nextStep.run();
 
     }
+
+    /**
+     * @param wifiTask
+     */
+    public static void executeTask(WifiTask wifiTask) {
+        checkIsInitialised();
+        wifiTask.run();
+    }
+
+    public static void cancelTask(WifiTask wifiTask) {
+        checkIsInitialised();
+        wifiTask.cancel();
+    }
+
+    public static ArrayList<WifiTask> getCurrentTasks() {
+        checkIsInitialised();
+        return CUR_WIFI_TASKS;
+    }
+
+
+    public static void cancelAllTasks() {
+        Iterator<WifiTask> iterator = CUR_WIFI_TASKS.iterator();
+        while (iterator.hasNext()) {
+            iterator.next().cancel();
+        }
+    }
+
+
+    /****internal****/
+
+    public static void getWifiPermission(final GetWifiPermissionTask getWifiPermissionTask) {
+        getWifiPermissionTask.callOnTaskStartRun();
+
+        getWifiPermissionTaskPrepare(getWifiPermissionTask, new OnPrepareCallback() {
+
+            @Override
+            public void onPreparingCurrentStep(int currentStep) {
+                getWifiPermissionTask.callOnTaskRunningCurrentStep(currentStep);
+            }
+
+            @Override
+            public void onPrepareSuccess() {
+                getWifiPermissionTask.callOnTaskSuccess();
+            }
+
+            @Override
+            public void onPrepareFail(int prepareTaskFailReason) {
+                getWifiPermissionTask.callOnTaskFail(prepareTaskFailReason);
+            }
+        });
+    }
+
 
     /**
      * @param setWifiEnabledTask
@@ -663,6 +687,14 @@ public final class EasyWifi {
         }
     }
 
+    private static void getWifiPermissionTaskPrepare(GetWifiPermissionTask getWifiPermissionTask,
+                                                     OnPrepareCallback onPrepareCallback) {
+        checkAndGuideUserGrantWifiPermissionAndNext(getWifiPermissionTask,
+                false,
+                0,
+                onPrepareCallback);
+    }
+
     /**
      * 1.Wifi module must be enabled.
      *
@@ -852,6 +884,7 @@ public final class EasyWifi {
         }
     }
 
+
     /**
      * 1.Check wifi module is exist.
      * 2.Request all permission about wifi operation.
@@ -875,11 +908,11 @@ public final class EasyWifi {
         final Runnable nextStep = new Runnable() {
             @Override
             public void run() {
-                if (isWifiEnabled() != enabled) {
-                    setWifiEnabledInternal(wifiTask, enabled, setWifiEnabledTimeout, onPrepareCallback);
-                } else {
+                if (wifiTask instanceof GetWifiPermissionTask || isWifiEnabled() == enabled) {
                     onPrepareCallback.onPrepareSuccess();
+                    return;
                 }
+                setWifiEnabledInternal(wifiTask, enabled, setWifiEnabledTimeout, onPrepareCallback);
             }
         };
 

@@ -16,7 +16,7 @@ public class GetConnectionInfoTask extends WifiTask {
         super(wifiTaskCallback);
     }
 
-    protected GetConnectionInfoTask(Parcel in) {
+    private GetConnectionInfoTask(Parcel in) {
         super(in);
         in.readParcelable(WifiInfo.class.getClassLoader());
     }

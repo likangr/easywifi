@@ -21,6 +21,7 @@ import com.likang.easywifi.lib.EasyWifi;
 import com.likang.easywifi.lib.core.task.CheckIsAlreadyConnectedTask;
 import com.likang.easywifi.lib.core.task.ConnectToWifiTask;
 import com.likang.easywifi.lib.core.task.GetConnectionInfoTask;
+import com.likang.easywifi.lib.core.task.GetWifiPermissionTask;
 import com.likang.easywifi.lib.core.task.ScanWifiTask;
 import com.likang.easywifi.lib.core.task.SetWifiEnabledTask;
 import com.likang.easywifi.lib.core.task.WifiTask;
@@ -45,6 +46,36 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private List<ScanResult> mScanResults;
     private ArrayAdapter<String> mWifiListAdapter;
 
+    private WifiTaskCallback mGetWifiPermissionTaskCallback = new WifiTaskCallback<GetWifiPermissionTask>() {
+        @Override
+        public void onTaskStartRun(GetWifiPermissionTask wifiTask) {
+            Logger.d(TAG, "onTaskStartRun");
+        }
+
+        @Override
+        public void onTaskRunningCurrentStep(GetWifiPermissionTask wifiTask) {
+            Logger.d(TAG, "onTaskRunningCurrentStep,currentStep=" + wifiTask.getRunningCurrentStep());
+        }
+
+        @Override
+        public void onTaskSuccess(GetWifiPermissionTask wifiTask) {
+            Logger.d(TAG, "onTaskSuccess");
+            ToastUtil.showShort(MainActivity.this, "获取wifi操作权限成功");
+        }
+
+        @Override
+        public void onTaskFail(GetWifiPermissionTask wifiTask) {
+            int failReason = wifiTask.getFailReason();
+            Logger.d(TAG, "onTaskRunningCurrentStep,failReason=" + failReason);
+            if (failReason == EasyWifi.FAIL_REASON_WIFI_MODULE_NOT_EXIST) {
+                ToastUtil.showShort(MainActivity.this, "获取wifi操作权限失败，您的设备没有wifi模块");
+            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_WIFI_PERMISSION) {
+                ToastUtil.showShort(MainActivity.this, "获取wifi操作权限失败,用户拒绝");
+            }
+        }
+
+    };
+
     private WifiTaskCallback mOnSetWifiEnabledCallback = new WifiTaskCallback<SetWifiEnabledTask>() {
         @Override
         public void onTaskStartRun(SetWifiEnabledTask wifiTask) {
@@ -61,6 +92,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         public void onTaskSuccess(SetWifiEnabledTask wifiTask) {
             Logger.d(TAG, "onTaskSuccess enabled=" + wifiTask.isEnabled());
             setPbVisible(false);
+            ToastUtil.showShort(MainActivity.this, (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi成功");
         }
 
         @Override
@@ -101,6 +133,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             setPbVisible(false);
             List<ScanResult> scanResults = EasyWifi.getScanResults();
             updateWifiSsidListFromScanResults(scanResults);
+            ToastUtil.showShort(MainActivity.this, "wifi扫描成功");
         }
 
         @Override
@@ -150,6 +183,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             WifiInfo wifiInfo = wifiTask.getWifiInfo();
             Logger.d(TAG, "onTaskSuccess wifiInfo=" + wifiInfo);
             mTvConnectionInfo.setText(String.format("connection info: %s %s %s", StringUtils.removeQuotationMarks(wifiInfo.getSSID()), wifiInfo.getBSSID(), wifiInfo.getSupplicantState()));
+            ToastUtil.showShort(MainActivity.this, "获取当前wifi信息成功");
         }
 
         @Override
@@ -185,6 +219,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             Logger.d(TAG, "onTaskSuccess");
             setPbVisible(false);
             updateConnectionInfo();
+            ToastUtil.showShort(MainActivity.this, "连接成功");
         }
 
         @Override
@@ -376,7 +411,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             for (WifiTask wifiTask : taskList) {
 
-                if (wifiTask instanceof SetWifiEnabledTask) {
+                if (wifiTask instanceof GetWifiPermissionTask) {
+                    wifiTask.setWifiTaskCallback(mGetWifiPermissionTaskCallback);
+                } else if (wifiTask instanceof SetWifiEnabledTask) {
                     wifiTask.setWifiTaskCallback(mOnSetWifiEnabledCallback);
                 } else if (wifiTask instanceof ScanWifiTask) {
                     wifiTask.setWifiTaskCallback(mOnScanWifiCallback);

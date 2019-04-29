@@ -98,7 +98,7 @@ public class ConnectToWifiTask extends WifiTask {
     }
 
 
-    protected ConnectToWifiTask(Parcel in) {
+    private ConnectToWifiTask(Parcel in) {
         super(in);
         mSsid = in.readString();
         mBssid = in.readString();

@@ -35,7 +35,7 @@ public class ScanWifiTask extends WifiTask {
     }
 
 
-    protected ScanWifiTask(Parcel in) {
+    private ScanWifiTask(Parcel in) {
         super(in);
         mScanWifiTimeout = in.readLong();
         mScanWifiWay = in.readInt();
