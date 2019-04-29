@@ -198,7 +198,7 @@ public class ConnectToWifiTask extends WifiTask {
             }
 
             if (TextUtils.isEmpty(mEncryptionScheme)) {
-                throw new IllegalArgumentException("mEncryptionScheme can not be empty!");
+                throw new IllegalArgumentException("EncryptionScheme can not be empty!");
             }
 
             if (!WifiEncryptionScheme.ENCRYPTION_SCHEME_NONE.equals(mEncryptionScheme) && TextUtils.isEmpty(mPassword)) {

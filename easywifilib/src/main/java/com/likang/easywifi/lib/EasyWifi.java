@@ -658,7 +658,7 @@ public final class EasyWifi {
     private static void checkIsInitialised() {
         synchronized (sLock) {
             if (!sIsInitialised) {
-                throw new IllegalStateException("you must invoke initCore method first of all.");
+                throw new IllegalStateException("You must invoke initCore method first of all.");
             }
         }
     }
