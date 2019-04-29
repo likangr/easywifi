@@ -12,7 +12,6 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -28,6 +27,7 @@ import com.likang.easywifi.lib.core.task.WifiTask;
 import com.likang.easywifi.lib.core.task.WifiTaskCallback;
 import com.likang.easywifi.lib.util.Logger;
 import com.likang.easywifi.lib.util.StringUtils;
+import com.likang.easywifi.lib.util.ToastUtil;
 import com.likang.easywifi.lib.util.WifiEncryptionScheme;
 import com.likang.easywifi.lib.util.WifiUtils;
 
@@ -65,8 +65,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         @Override
         public void onTaskFail(SetWifiEnabledTask wifiTask) {
-            Logger.d(TAG, "onTaskRunningCurrentStep enabled=" + wifiTask.isEnabled() + ",failReason=" + wifiTask.getFailReason());
+            int failReason = wifiTask.getFailReason();
+            Logger.d(TAG, "onTaskRunningCurrentStep enabled=" + wifiTask.isEnabled() + ",failReason=" + failReason);
             setPbVisible(false);
+            if (failReason == EasyWifi.FAIL_REASON_WIFI_MODULE_NOT_EXIST) {
+                ToastUtil.showShort(MainActivity.this, (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi失败，您的设备没有wifi模块");
+            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_WIFI_PERMISSION) {
+                ToastUtil.showShort(MainActivity.this, (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi失败，没有wifi操作权限");
+            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT) {
+                ToastUtil.showShort(MainActivity.this, (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi失败，操作超时");
+            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_REQUEST_NOT_BE_SATISFIED) {
+                ToastUtil.showShort(MainActivity.this, (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi失败，系统不允许" + (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi");
+            }
+
         }
 
     };
@@ -94,8 +105,32 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         @Override
         public void onTaskFail(ScanWifiTask wifiTask) {
-            Logger.d(TAG, "onTaskFail failReason=" + wifiTask.getFailReason());
+            int failReason = wifiTask.getFailReason();
+            Logger.d(TAG, "onTaskFail failReason=" + failReason);
             setPbVisible(false);
+
+
+            if (failReason == EasyWifi.FAIL_REASON_LOCATION_MODULE_NOT_EXIST) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，您的设备没有定位服务");
+            } else if (failReason == EasyWifi.FAIL_REASON_LOCATION_MODULE_DISABLE) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，您的定位服务没有开启");
+            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_LOCATION_PERMISSIONS) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，您的没有开启定位服务的权限");
+            } else if (failReason == EasyWifi.FAIL_REASON_WIFI_MODULE_NOT_EXIST) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，您的设备没有wifi模块");
+            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_WIFI_PERMISSION) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，没有wifi操作权限");
+            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，开启wifi超时");
+            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_REQUEST_NOT_BE_SATISFIED) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，系统不允许开启wifi");
+            } else if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_UNKNOWN) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，未知原因");
+            } else if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_TIMEOUT) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，扫描超时");
+            } else if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED) {
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，系统不允许扫描");
+            }
         }
 
     };
@@ -122,6 +157,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             int failReason = wifiTask.getFailReason();
             Logger.d(TAG, "onTaskFail failReason=" + failReason);
             mTvConnectionInfo.setText("connection info: unknown");
+
+            if (failReason == EasyWifi.FAIL_REASON_LOCATION_MODULE_NOT_EXIST) {
+                ToastUtil.showShort(MainActivity.this, "获取当前wifi信息失败，您的设备没有定位服务");
+            } else if (failReason == EasyWifi.FAIL_REASON_LOCATION_MODULE_DISABLE) {
+                ToastUtil.showShort(MainActivity.this, "获取当前wifi信息失败，您的定位服务没有开启");
+            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_LOCATION_PERMISSIONS) {
+                ToastUtil.showShort(MainActivity.this, "获取当前wifi信息失败，您的没有开启定位服务的权限");
+            }
         }
 
     };
@@ -150,11 +193,38 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             Logger.d(TAG, "onTaskFail failReason=" + failReason);
             setPbVisible(false);
             updateConnectionInfo();
-            if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
-                Toast.makeText(MainActivity.this, "密码错误，请重新输入", Toast.LENGTH_SHORT).show();
-                showPwdDialog(null, wifiTask.getWifiConfiguration(), WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(wifiTask.getWifiConfiguration()));
+
+            if (failReason == EasyWifi.FAIL_REASON_LOCATION_MODULE_NOT_EXIST) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，您的设备没有定位服务");
+            } else if (failReason == EasyWifi.FAIL_REASON_LOCATION_MODULE_DISABLE) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，您的定位服务没有开启");
+            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_LOCATION_PERMISSIONS) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，您的没有开启定位服务的权限");
+            } else if (failReason == EasyWifi.FAIL_REASON_WIFI_MODULE_NOT_EXIST) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，您的设备没有wifi模块");
+            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_WIFI_PERMISSION) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，没有wifi操作权限");
+            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，开启wifi超时");
+            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_REQUEST_NOT_BE_SATISFIED) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，系统不允许开启wifi");
             } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_MUST_THROUGH_SYSTEM_WIFI_SETTING) {
-                Toast.makeText(MainActivity.this, "无法连接此网络，需要您在系统WIFI设置中连接", Toast.LENGTH_SHORT).show();
+                ToastUtil.showShort(MainActivity.this, "连接失败，需要您在系统WIFI设置中连接");
+            } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_ARGUMENTS_ERROR) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，参数有误");
+            } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_UNKNOWN) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，未知原因");
+            } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_IS_POOR_LINK) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，网络质量太差");
+            } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_NOT_OBTAINED_IP_ADDR) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，获取不到ip");
+            } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，密码错误请重新输入");
+                showPwdDialog(null, wifiTask.getWifiConfiguration(), WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(wifiTask.getWifiConfiguration()));
+            } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_TIMEOUT) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，连接超时");
+            } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_REQUEST_NOT_BE_SATISFIED) {
+                ToastUtil.showShort(MainActivity.this, "连接失败，系统不允许连接");
             }
         }
 
@@ -222,6 +292,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 }
 
+            } else {
+                ToastUtil.showShort(MainActivity.this, "无需再次连接" + wifiTask.getSsid());
             }
         }
 
@@ -230,6 +302,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             int failReason = wifiTask.getFailReason();
             Logger.d(TAG, "onTaskFail failReason=" + failReason);
             setPbVisible(false);
+
+            if (failReason == EasyWifi.FAIL_REASON_LOCATION_MODULE_NOT_EXIST) {
+                ToastUtil.showShort(MainActivity.this, "判断是否早已连接失败，您的设备没有定位服务");
+            } else if (failReason == EasyWifi.FAIL_REASON_LOCATION_MODULE_DISABLE) {
+                ToastUtil.showShort(MainActivity.this, "判断是否早已连接失败，您的定位服务没有开启");
+            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_LOCATION_PERMISSIONS) {
+                ToastUtil.showShort(MainActivity.this, "判断是否早已连接失败，您的没有开启定位服务的权限");
+            }
         }
 
     };
@@ -332,7 +412,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     public void scanWifi(View view) {
         ScanWifiTask scanWifiTask = new ScanWifiTask(EasyWifi.TIME_OUT_SCAN_WIFI_DEFAULT,
-                EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT,
                 EasyWifi.SCAN_WIFI_WAY_INITIATIVE,
                 true,
                 mOnScanWifiCallback);

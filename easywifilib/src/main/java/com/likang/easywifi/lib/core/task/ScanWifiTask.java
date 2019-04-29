@@ -25,7 +25,6 @@ public class ScanWifiTask extends WifiTask {
     private boolean mIsAutoSwitchToThroughSystemWifi;
 
     public ScanWifiTask(long scanWifiTimeout,
-                        long setWifiEnabledTimeout,
                         int scanWifiWay,
                         boolean isAutoSwitchToThroughSystemWifi,
                         WifiTaskCallback wifiTaskCallback) {

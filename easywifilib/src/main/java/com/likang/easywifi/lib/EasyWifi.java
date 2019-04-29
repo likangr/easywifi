@@ -109,7 +109,7 @@ public final class EasyWifi {
 
     public static final int TIME_OUT_SCAN_WIFI_5S = 5000;
     public static final int TIME_OUT_SCAN_WIFI_10S = 10000;
-    public static final int TIME_OUT_SCAN_WIFI_15S = 10000;
+    public static final int TIME_OUT_SCAN_WIFI_15S = 15000;
     public static final int TIME_OUT_SCAN_WIFI_DEFAULT = TIME_OUT_SCAN_WIFI_15S;
 
     public static final int TIME_OUT_CONNECT_TO_WIFI_5S = 5000;
