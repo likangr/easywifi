@@ -291,6 +291,35 @@ public final class EasyWifi {
     }
 
     /**
+     * check result:
+     * 1.FAIL_REASON_WIFI_MODULE_NOT_EXIST
+     * 2.FAIL_REASON_LOCATION_MODULE_NOT_EXIST
+     * 3.FAIL_REASON_LOCATION_MODULE_DISABLE
+     * 4.FAIL_REASON_NOT_HAS_WIFI_AND_LOCATION_PERMISSION
+     * 5. 0(have all permissions).
+     *
+     * @return
+     */
+    public static int checkPermissions() {
+
+        if (!WifiUtils.checkWifiModuleIsExist(sWifiManager)) {
+            return FAIL_REASON_WIFI_MODULE_NOT_EXIST;
+        }
+
+        if (!LocationUtils.checkLocationModuleIsExist()) {
+            return FAIL_REASON_LOCATION_MODULE_NOT_EXIST;
+        }
+        if (!LocationUtils.isLocationEnabled()) {
+            return FAIL_REASON_LOCATION_MODULE_DISABLE;
+        }
+        if (!WifiUtils.checkHasChangeWifiStatePermission(EasyWifi.getWifiManager()) || !LocationUtils.checkHasLocationPermissions()) {
+            return FAIL_REASON_NOT_HAS_WIFI_AND_LOCATION_PERMISSION;
+        }
+
+        return 0;
+    }
+
+    /**
      * @param wifiTask
      */
     public static void executeTask(WifiTask wifiTask) {
@@ -923,7 +952,7 @@ public final class EasyWifi {
         }
 
         onPrepareCallback.onPreparingCurrentStep(CURRENT_STEP_CHECK_WIFI_PERMISSION);
-        if (!WifiUtils.checkHasChangeWifiStatePermission(sWifiManager)) {//fixme vivo reject crash.
+        if (!WifiUtils.checkHasChangeWifiStatePermission(sWifiManager)) {
             onPrepareCallback.onPreparingCurrentStep(CURRENT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION);
             IntentManager.gotoUserActionBridgeActivity(UserActionBridgeActivity.USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION,
                     new UserActionBridgeActivity.OnUserActionDoneCallback() {

@@ -53,13 +53,13 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
             case USER_ACTION_CODE_ENABLE_LOCATION_MODULE:
                 IntentManager.gotoLocationSettings(this);
                 UserActionGuideToast.showGuideToast(this, "需要打开「位置信息服务」",
-                        "操作指南：\n找到「位置信息/定位」相关按钮并打开对应开关", Toast.LENGTH_LONG);
+                        "操作指南：\n1.找到「位置信息/定位」相关按钮并打开对应开关\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             case USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION:
                 if (LocationUtils.userRejectedLocationPermissionsAndCheckedNoLongerAskOption(this)) {
                     IntentManager.gotoSelfPermissionSetting(this);
                     UserActionGuideToast.showGuideToast(this, "需要「位置信息权限」",
-                            "操作指南：\n进入「权限」设置，找到「位置信息/定位」相关按钮并打开对应开关", Toast.LENGTH_LONG);
+                            "操作指南：\n1.进入「权限」设置，找到「位置信息/定位」相关按钮并允许权限\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 } else {
                     PermissionsManager.request(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,
                                     Manifest.permission.ACCESS_FINE_LOCATION}, USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION,
@@ -69,12 +69,12 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
             case USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION:
                 IntentManager.gotoSelfPermissionSetting(this);
                 UserActionGuideToast.showGuideToast(this, "需要「WIFI操作权限」",
-                        "操作指南：\n进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」相关按钮并打开对应开关", Toast.LENGTH_LONG);
+                        "操作指南：\n1.进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」相关按钮并允许权限\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             case USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION:
                 IntentManager.gotoSelfPermissionSetting(this);
                 UserActionGuideToast.showGuideToast(this, "需要「WIFI操作权限」和「位置信息权限」",
-                        "操作指南：\n进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」及「位置信息/定位」相关按钮并打开对应开关", Toast.LENGTH_LONG);
+                        "操作指南：\n1.进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」及「位置信息/定位」相关按钮并允许权限\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             default:
                 break;
