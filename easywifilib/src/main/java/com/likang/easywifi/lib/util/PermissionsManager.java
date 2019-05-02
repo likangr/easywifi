@@ -2,19 +2,14 @@ package com.likang.easywifi.lib.util;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AppOpsManager;
-import android.app.Application;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.os.Binder;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.core.content.PermissionChecker;
 import androidx.fragment.app.Fragment;
 
