@@ -1,12 +1,12 @@
 package com.likang.easywifi.lib.util;
 
+import android.Manifest;
 import android.app.Application;
 import android.content.pm.PackageManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Build;
 import android.text.TextUtils;
 
 import com.likang.easywifi.lib.EasyWifi;
@@ -34,10 +34,7 @@ public class WifiUtils {
 
     public static boolean isUserForbidWifiPermission() {
 
-        boolean isUserForbidWifiPermission = false;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            isUserForbidWifiPermission = !PermissionsManager.isGrantPermission("android:change_wifi_state");
-        }
+        boolean isUserForbidWifiPermission = !PermissionsManager.check(Manifest.permission.CHANGE_WIFI_STATE);
         Logger.d(TAG, "isUserForbidWifiPermission=" + isUserForbidWifiPermission);
         return isUserForbidWifiPermission;
     }

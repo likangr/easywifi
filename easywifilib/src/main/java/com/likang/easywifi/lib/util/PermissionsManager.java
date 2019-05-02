@@ -283,18 +283,6 @@ public class PermissionsManager {
         return isCanUse;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-    public static boolean isGrantPermission(String op) {
-        try {
-            Application application = ApplicationHolder.getApplication();
-            AppOpsManager appOpsManager = (AppOpsManager) application.getSystemService(Context.APP_OPS_SERVICE);
-            return appOpsManager.checkOp(op, Binder.getCallingUid(), application.getPackageName()) == AppOpsManager.MODE_ALLOWED;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return true;
-        }
-    }
-
     /**
      * 请求单个权限回调
      */
