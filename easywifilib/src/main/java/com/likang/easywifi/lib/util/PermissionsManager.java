@@ -15,7 +15,7 @@ import android.os.Build;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
 import androidx.fragment.app.Fragment;
 
 
@@ -56,7 +56,7 @@ public class PermissionsManager {
 
         }
 
-        return ContextCompat.checkSelfPermission(ApplicationHolder.getApplication(), permissions) == PackageManager.PERMISSION_GRANTED;
+        return PermissionChecker.checkSelfPermission(ApplicationHolder.getApplication(), permissions) == PackageManager.PERMISSION_GRANTED;
     }
 
     /**
@@ -283,23 +283,6 @@ public class PermissionsManager {
         return isCanUse;
     }
 
-    /**
-     * 请求单个权限回调
-     */
-    public interface IReqListener2 {
-        void onGranted(int reqCode, String permissions);
-
-        void onDenied(int reqCode, String permissions);
-    }
-
-    /**
-     * 请求多个权限回调
-     */
-    public interface IReqListener1 {
-        void onResult(int reqCode, String[] permissions, boolean result, int[] grantResults);
-    }
-
-
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public static boolean isGrantPermission(String op) {
         try {
@@ -310,6 +293,23 @@ public class PermissionsManager {
             e.printStackTrace();
             return true;
         }
+    }
+
+    /**
+     * 请求单个权限回调
+     */
+    public interface IReqListener2 {
+        void onGranted(int reqCode, String permissions);
+
+        void onDenied(int reqCode, String permissions);
+    }
+
+
+    /**
+     * 请求多个权限回调
+     */
+    public interface IReqListener1 {
+        void onResult(int reqCode, String[] permissions, boolean result, int[] grantResults);
     }
 
 }
