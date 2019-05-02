@@ -56,13 +56,13 @@ public final class EasyWifi {
 
     private static final ArrayList<WifiTask> CUR_WIFI_TASKS = new ArrayList<>();
 
-    public static final int FAIL_REASON_LOCATION_MODULE_DISABLE = 1;
+    public static final int FAIL_REASON_SET_LOCATION_ENABLED_USER_REJECT = 1;
     public static final int FAIL_REASON_LOCATION_MODULE_NOT_EXIST = 2;
     public static final int FAIL_REASON_NOT_HAS_LOCATION_PERMISSIONS = 3;
 
     public static final int FAIL_REASON_WIFI_MODULE_NOT_EXIST = 4;
     public static final int FAIL_REASON_NOT_HAS_WIFI_PERMISSION = 5;
-    public static final int FAIL_REASON_SET_WIFI_ENABLED_REQUEST_NOT_BE_SATISFIED = 6;
+    public static final int FAIL_REASON_SET_WIFI_ENABLED_USER_REJECT = 6;
     public static final int FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT = 7;
 
     public static final int FAIL_REASON_CONNECT_TO_WIFI_REQUEST_NOT_BE_SATISFIED = 8;
@@ -235,7 +235,7 @@ public final class EasyWifi {
             public void run() {
 
                 onFixPermissionsCallback.onFixPermissionsCurrentStep(CURRENT_STEP_CHECK_WIFI_AND_LOCATION_PERMISSION);
-                if (WifiUtils.checkHasChangeWifiStatePermission(EasyWifi.getWifiManager()) && LocationUtils.checkHasLocationPermissions()) {
+                if (!WifiUtils.isUserForbidWifiPermission() && LocationUtils.checkHasLocationPermissions()) {
                     onFixPermissionsCallback.onFixPermissionsSuccess();
                     return;
                 }
@@ -281,7 +281,7 @@ public final class EasyWifi {
 
                         @Override
                         public void onUserActionDoneIsNotWeExcepted() {
-                            onFixPermissionsCallback.onFixPermissionsFail(FAIL_REASON_LOCATION_MODULE_DISABLE);
+                            onFixPermissionsCallback.onFixPermissionsFail(FAIL_REASON_SET_LOCATION_ENABLED_USER_REJECT);
                         }
                     });
             return;
@@ -294,7 +294,7 @@ public final class EasyWifi {
      * check result:
      * 1.FAIL_REASON_WIFI_MODULE_NOT_EXIST
      * 2.FAIL_REASON_LOCATION_MODULE_NOT_EXIST
-     * 3.FAIL_REASON_LOCATION_MODULE_DISABLE
+     * 3.FAIL_REASON_SET_LOCATION_ENABLED_USER_REJECT
      * 4.FAIL_REASON_NOT_HAS_WIFI_AND_LOCATION_PERMISSION
      * 5. 0(have all permissions).
      *
@@ -310,9 +310,9 @@ public final class EasyWifi {
             return FAIL_REASON_LOCATION_MODULE_NOT_EXIST;
         }
         if (!LocationUtils.isLocationEnabled()) {
-            return FAIL_REASON_LOCATION_MODULE_DISABLE;
+            return FAIL_REASON_SET_LOCATION_ENABLED_USER_REJECT;
         }
-        if (!WifiUtils.checkHasChangeWifiStatePermission(EasyWifi.getWifiManager()) || !LocationUtils.checkHasLocationPermissions()) {
+        if (WifiUtils.isUserForbidWifiPermission() || !LocationUtils.checkHasLocationPermissions()) {
             return FAIL_REASON_NOT_HAS_WIFI_AND_LOCATION_PERMISSION;
         }
 
@@ -767,7 +767,7 @@ public final class EasyWifi {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
             checkAndEnableLocationAndNext(scanWifiTask, TIME_OUT_SET_WIFI_ENABLED_DEFAULT, onPrepareCallback);
         } else {
-            checkWifiEnabledAndNext(scanWifiTask, true, TIME_OUT_SET_WIFI_ENABLED_DEFAULT, onPrepareCallback);
+            checkWifiEnabledAndNext(scanWifiTask, TIME_OUT_SET_WIFI_ENABLED_DEFAULT, onPrepareCallback);
         }
     }
 
@@ -840,7 +840,7 @@ public final class EasyWifi {
 
                         @Override
                         public void onUserActionDoneIsNotWeExcepted() {
-                            onPrepareCallback.onPrepareFail(FAIL_REASON_LOCATION_MODULE_DISABLE);
+                            onPrepareCallback.onPrepareFail(FAIL_REASON_SET_LOCATION_ENABLED_USER_REJECT);
                         }
                     });
             return;
@@ -865,7 +865,7 @@ public final class EasyWifi {
             @Override
             public void run() {
                 if (wifiTask instanceof ScanWifiTask) {
-                    checkWifiEnabledAndNext(wifiTask, true, setWifiEnabledTimeout, onPrepareCallback);
+                    checkWifiEnabledAndNext(wifiTask, setWifiEnabledTimeout, onPrepareCallback);
                 } else if (wifiTask instanceof GetConnectionInfoTask) {
                     onPrepareCallback.onPrepareSuccess();
                 } else if (wifiTask instanceof ConnectToWifiTask) {
@@ -904,10 +904,10 @@ public final class EasyWifi {
      * @param setWifiEnabledTimeout
      * @param onPrepareCallback
      */
-    private static void checkWifiEnabledAndNext(WifiTask wifiTask, boolean enabled, long setWifiEnabledTimeout, OnPrepareCallback onPrepareCallback) {
+    private static void checkWifiEnabledAndNext(WifiTask wifiTask, long setWifiEnabledTimeout, OnPrepareCallback onPrepareCallback) {
         onPrepareCallback.onPreparingCurrentStep(CURRENT_STEP_CHECK_WIFI_ENABLED);
-        if (isWifiEnabled() != enabled) {
-            checkAndGuideUserGrantWifiPermissionAndNext(wifiTask, enabled, setWifiEnabledTimeout, onPrepareCallback);
+        if (!isWifiEnabled()) {
+            checkAndGuideUserGrantWifiPermissionAndNext(wifiTask, true, setWifiEnabledTimeout, onPrepareCallback);
         } else {
             onPrepareCallback.onPrepareSuccess();
         }
@@ -952,7 +952,7 @@ public final class EasyWifi {
         }
 
         onPrepareCallback.onPreparingCurrentStep(CURRENT_STEP_CHECK_WIFI_PERMISSION);
-        if (!WifiUtils.checkHasChangeWifiStatePermission(sWifiManager)) {
+        if (WifiUtils.isUserForbidWifiPermission()) {
             onPrepareCallback.onPreparingCurrentStep(CURRENT_STEP_GUIDE_USER_GRANT_WIFI_PERMISSION);
             IntentManager.gotoUserActionBridgeActivity(UserActionBridgeActivity.USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION,
                     new UserActionBridgeActivity.OnUserActionDoneCallback() {
@@ -987,8 +987,7 @@ public final class EasyWifi {
         onPrepareCallback.onPreparingCurrentStep(CURRENT_STEP_SET_WIFI_ENABLED);
 
 
-        boolean requestSetWifiEnabledResult = sWifiManager.setWifiEnabled(enabled);
-        if (requestSetWifiEnabledResult) {
+        if (sWifiManager.setWifiEnabled(enabled)) {
 
             //note: The operation of  wifi is not timely.
             final int expectedState = enabled ?
@@ -1025,7 +1024,19 @@ public final class EasyWifi {
             sHandler.postDelayed(wifiTask.getPostDelayRunnable(), setWifiEnabledTimeout);
 
         } else {
-            onPrepareCallback.onPrepareFail(FAIL_REASON_SET_WIFI_ENABLED_REQUEST_NOT_BE_SATISFIED);
+            IntentManager.gotoUserActionBridgeActivity(enabled ? UserActionBridgeActivity.USER_ACTION_CODE_ENABLE_WIFI_MODULE :
+                            UserActionBridgeActivity.USER_ACTION_CODE_DISABLE_WIFI_MODULE,
+                    new UserActionBridgeActivity.OnUserActionDoneCallback() {
+                        @Override
+                        public void onUserActionDoneIsWeExcepted() {
+                            onPrepareCallback.onPrepareSuccess();
+                        }
+
+                        @Override
+                        public void onUserActionDoneIsNotWeExcepted() {
+                            onPrepareCallback.onPrepareFail(FAIL_REASON_SET_WIFI_ENABLED_USER_REJECT);
+                        }
+                    });
         }
     }
 

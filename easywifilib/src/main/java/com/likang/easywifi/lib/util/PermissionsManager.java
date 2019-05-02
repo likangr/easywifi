@@ -2,14 +2,19 @@ package com.likang.easywifi.lib.util;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AppOpsManager;
+import android.app.Application;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Binder;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
@@ -293,4 +298,18 @@ public class PermissionsManager {
     public interface IReqListener1 {
         void onResult(int reqCode, String[] permissions, boolean result, int[] grantResults);
     }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    public static boolean isGrantPermission(String op) {
+        try {
+            Application application = ApplicationHolder.getApplication();
+            AppOpsManager appOpsManager = (AppOpsManager) application.getSystemService(Context.APP_OPS_SERVICE);
+            return appOpsManager.checkOp(op, Binder.getCallingUid(), application.getPackageName()) == AppOpsManager.MODE_ALLOWED;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return true;
+        }
+    }
+
 }

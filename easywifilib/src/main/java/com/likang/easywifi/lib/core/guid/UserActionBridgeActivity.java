@@ -28,6 +28,8 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
     public static final int USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION = 2;
     public static final int USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION = 3;
     public static final int USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION = 4;
+    public static final int USER_ACTION_CODE_ENABLE_WIFI_MODULE = 5;
+    public static final int USER_ACTION_CODE_DISABLE_WIFI_MODULE = 6;
 
     public static final String INTENT_EXTRA_KEY_USER_ACTION_CODE = "user_action_code";
     public static final String INTENT_EXTRA_KEY_USER_ACTION_DONE_CALLBACK_ID = "user_action_done_callback_id";
@@ -56,7 +58,7 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
                         "操作指南：\n1.找到「位置信息/定位」相关按钮并打开对应开关\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             case USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION:
-                if (LocationUtils.userRejectedLocationPermissionsAndCheckedNoLongerAskOption(this)) {
+                if (LocationUtils.isUserForbidLocationPermissions(this)) {
                     IntentManager.gotoSelfPermissionSetting(this);
                     UserActionGuideToast.showGuideToast(this, "需要「位置信息权限」",
                             "操作指南：\n1.进入「权限」设置，找到「位置信息/定位」相关按钮并允许权限\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
@@ -75,6 +77,16 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
                 IntentManager.gotoSelfPermissionSetting(this);
                 UserActionGuideToast.showGuideToast(this, "需要「WIFI操作权限」和「位置信息权限」",
                         "操作指南：\n1.进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」及「位置信息/定位」相关按钮并允许权限\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
+                break;
+            case USER_ACTION_CODE_ENABLE_WIFI_MODULE:
+                IntentManager.gotoWifiSettings(this);
+                UserActionGuideToast.showGuideToast(this, "需要打开「WLAN/WIFI」",
+                        "操作指南：\n1.找到「打开WLAN/WIFI」相关按钮并打开对应开关\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
+                break;
+            case USER_ACTION_CODE_DISABLE_WIFI_MODULE:
+                IntentManager.gotoWifiSettings(this);
+                UserActionGuideToast.showGuideToast(this, "需要关闭「WLAN/WIFI」",
+                        "操作指南：\n1.找到「打开WLAN/WIFI」相关按钮并关闭对应开关\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             default:
                 break;
@@ -95,13 +107,17 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
     private boolean checkUserDoneIsWeExcepted() {
         boolean userDoneIsWeExcepted = false;
         if (mUserActionCode == USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION) {
-            userDoneIsWeExcepted = WifiUtils.checkHasChangeWifiStatePermission(EasyWifi.getWifiManager());
+            userDoneIsWeExcepted = !WifiUtils.isUserForbidWifiPermission();
         } else if (mUserActionCode == USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION) {
             userDoneIsWeExcepted = LocationUtils.checkHasLocationPermissions();
         } else if (mUserActionCode == USER_ACTION_CODE_ENABLE_LOCATION_MODULE) {
             userDoneIsWeExcepted = LocationUtils.isLocationEnabled();
         } else if (mUserActionCode == USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION) {
-            userDoneIsWeExcepted = WifiUtils.checkHasChangeWifiStatePermission(EasyWifi.getWifiManager()) && LocationUtils.checkHasLocationPermissions();
+            userDoneIsWeExcepted = !WifiUtils.isUserForbidWifiPermission() && LocationUtils.checkHasLocationPermissions();
+        } else if (mUserActionCode == USER_ACTION_CODE_ENABLE_WIFI_MODULE) {
+            userDoneIsWeExcepted = EasyWifi.isWifiEnabled();
+        } else if (mUserActionCode == USER_ACTION_CODE_DISABLE_WIFI_MODULE) {
+            userDoneIsWeExcepted = !EasyWifi.isWifiEnabled();
         }
         return userDoneIsWeExcepted;
     }

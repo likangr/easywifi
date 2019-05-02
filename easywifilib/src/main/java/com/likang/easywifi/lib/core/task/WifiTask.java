@@ -26,6 +26,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
     int mRunningCurrentStep;
     int mFailReason;
     int mCurrentStatus = STATUS_IDLE;
+    private String mTag;
 
     private Runnable mPostDelayRunnable;
     private BroadcastReceiver mBroadcastReceiver;
@@ -34,6 +35,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
         mCurrentStatus = in.readInt();
         mRunningCurrentStep = in.readInt();
         mFailReason = in.readInt();
+        mTag = in.readString();
     }
 
     WifiTask(WifiTaskCallback wifiTaskCallback) {
@@ -86,6 +88,14 @@ public abstract class WifiTask implements Runnable, Parcelable {
 
     public int getCurrentStatus() {
         return mCurrentStatus;
+    }
+
+    public String getTag() {
+        return mTag;
+    }
+
+    public void setTag(String tag) {
+        mTag = tag;
     }
 
     public Runnable getPostDelayRunnable() {
@@ -155,6 +165,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
         dest.writeInt(mCurrentStatus);
         dest.writeInt(mRunningCurrentStep);
         dest.writeInt(mFailReason);
+        dest.writeString(mTag);
     }
 
 }

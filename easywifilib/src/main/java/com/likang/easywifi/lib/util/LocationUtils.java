@@ -1,6 +1,7 @@
 package com.likang.easywifi.lib.util;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -46,11 +47,12 @@ public class LocationUtils {
                         Manifest.permission.ACCESS_FINE_LOCATION});
     }
 
-    public static boolean userRejectedLocationPermissionsAndCheckedNoLongerAskOption(Object page) {
+    public static boolean isUserForbidLocationPermissions(Activity activity) {
 
-        return !PermissionsManager.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION, page)
-                & !PermissionsManager.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION, page);
-
+        boolean isUserForbidLocationPermissions = !PermissionsManager.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION, activity)
+                & !PermissionsManager.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION, activity);
+        Logger.d(TAG, "isUserForbidLocationPermissions=" + isUserForbidLocationPermissions);
+        return isUserForbidLocationPermissions;
     }
 
 }
