@@ -38,9 +38,9 @@ public class GetConnectionInfoTask extends WifiTask {
     }
 
     @Override
-    public void callOnTaskSuccess() {
+    public boolean callOnTaskSuccess() {
         mWifiInfo = EasyWifi.getWifiManager().getConnectionInfo();
-        super.callOnTaskSuccess();
+        return super.callOnTaskSuccess();
     }
 
     public static final Creator<GetConnectionInfoTask> CREATOR = new Creator<GetConnectionInfoTask>() {

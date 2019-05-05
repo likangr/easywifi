@@ -13,4 +13,6 @@ public interface WifiTaskCallback<T extends WifiTask> {
 
     void onTaskFail(T wifiTask);
 
+    void onTaskCancel(T wifiTask);
+
 }

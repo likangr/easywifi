@@ -29,6 +29,9 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
 
         @Override
         public void onTaskSuccess(GetConnectionInfoTask wifiTask) {
+            if (!callOnTaskRunningCurrentStep(EasyWifi.CURRENT_STEP_PREPARE_SUCCESS)) {
+                return;
+            }
             mIsAlreadyConnected = WifiUtils.isAlreadyConnected(mSsid, mBssid, EasyWifi.getWifiManager());
             callOnTaskSuccess();
         }
@@ -36,6 +39,11 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
         @Override
         public void onTaskFail(GetConnectionInfoTask wifiTask) {
             callOnTaskFail(wifiTask.getFailReason());
+        }
+
+        @Override
+        public void onTaskCancel(GetConnectionInfoTask wifiTask) {
+            callOnTaskCanceled();
         }
     });
 

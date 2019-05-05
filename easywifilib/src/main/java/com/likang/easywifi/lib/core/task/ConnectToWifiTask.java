@@ -181,9 +181,6 @@ public class ConnectToWifiTask extends WifiTask {
         }
 
         if (mIsConnectToConfiguredWifi) {
-            if (mWifiConfiguration == null) {
-                throw new IllegalArgumentException("WifiConfiguration can not be null!");
-            }
 
             if (mWifiConfiguration.networkId == -1) {
                 throw new IllegalArgumentException("WifiConfiguration is have not been configured!");
