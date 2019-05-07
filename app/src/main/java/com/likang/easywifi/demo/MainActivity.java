@@ -423,35 +423,33 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         mLvWifiList.setAdapter(mWifiListAdapter);
         mLvWifiList.setOnItemClickListener(this);
 
-        updateConnectionInfo();
-        scanWifi(null);
-
-        resumeTaskIfNeed(savedInstanceState);
-
+        if (savedInstanceState != null) {
+            resumeTask(savedInstanceState);
+        } else {
+            updateConnectionInfo();
+        }
     }
 
-    private void resumeTaskIfNeed(Bundle savedInstanceState) {
-        if (savedInstanceState != null) {
-            ArrayList<WifiTask> taskList = savedInstanceState.getParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK);
+    private void resumeTask(Bundle savedInstanceState) {
+        ArrayList<WifiTask> taskList = savedInstanceState.getParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK);
 
-            for (WifiTask wifiTask : taskList) {
+        for (WifiTask wifiTask : taskList) {
 
-                if (wifiTask instanceof PrepareEnvironmentTask) {
-                    wifiTask.setWifiTaskCallback(mPrepareEnvironmentCallback);
-                } else if (wifiTask instanceof SetWifiEnabledTask) {
-                    wifiTask.setWifiTaskCallback(mOnSetWifiEnabledCallback);
-                } else if (wifiTask instanceof ScanWifiTask) {
-                    wifiTask.setWifiTaskCallback(mOnScanWifiCallback);
-                } else if (wifiTask instanceof ConnectToWifiTask) {
-                    wifiTask.setWifiTaskCallback(mOnConnectToWifiCallback);
-                } else if (wifiTask instanceof CheckIsAlreadyConnectedTask) {
-                    wifiTask.setWifiTaskCallback(mOnCheckIsAlreadyConnectedCallback);
-                } else if (wifiTask instanceof GetConnectionInfoTask) {
-                    wifiTask.setWifiTaskCallback(mOnGetConnectionInfoCallback);
-                }
-                Logger.d(TAG, "resume WifiTask=" + wifiTask);
-                EasyWifi.executeTask(wifiTask);
+            if (wifiTask instanceof PrepareEnvironmentTask) {
+                wifiTask.setWifiTaskCallback(mPrepareEnvironmentCallback);
+            } else if (wifiTask instanceof SetWifiEnabledTask) {
+                wifiTask.setWifiTaskCallback(mOnSetWifiEnabledCallback);
+            } else if (wifiTask instanceof ScanWifiTask) {
+                wifiTask.setWifiTaskCallback(mOnScanWifiCallback);
+            } else if (wifiTask instanceof ConnectToWifiTask) {
+                wifiTask.setWifiTaskCallback(mOnConnectToWifiCallback);
+            } else if (wifiTask instanceof CheckIsAlreadyConnectedTask) {
+                wifiTask.setWifiTaskCallback(mOnCheckIsAlreadyConnectedCallback);
+            } else if (wifiTask instanceof GetConnectionInfoTask) {
+                wifiTask.setWifiTaskCallback(mOnGetConnectionInfoCallback);
             }
+            Logger.d(TAG, "resume WifiTask=" + wifiTask);
+            EasyWifi.executeTask(wifiTask);
         }
     }
 
