@@ -200,7 +200,12 @@ public class PrepareEnvironmentTask extends WifiTask {
                                     new UserActionBridgeActivity.OnUserActionDoneCallback() {
                                         @Override
                                         public void onUserActionDoneIsWeExcepted() {
-                                            checkSetWifiEnabledIsSuccess.run();
+                                            //always execute here.
+                                            if (EasyWifi.isWifiEnabled() == mWifiEnabled) {
+                                                callOnTaskSuccess();
+                                            } else {
+                                                checkSetWifiEnabledIsSuccess.run();
+                                            }
                                         }
 
                                         @Override
