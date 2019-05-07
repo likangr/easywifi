@@ -5,6 +5,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -373,12 +374,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private void showPwdDialog(final ScanResult scanResult, final WifiConfiguration configuredWifiConfiguration, final String encryptionScheme) {
         final EditText editText = new EditText(MainActivity.this);
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this).setTitle(String.format("请输入%s的密码",
+        final AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this).setTitle(String.format("请输入%s的密码",
                 scanResult != null ? scanResult.SSID : configuredWifiConfiguration.SSID)).setView(editText)
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         String password = editText.getText().toString().trim();
+
+                        if (TextUtils.isEmpty(password)) {
+                            ToastUtil.showShort(MainActivity.this, "请先输入密码");
+                            showPwdDialog(scanResult, configuredWifiConfiguration, encryptionScheme);
+                            return;
+                        }
+
 
                         if (configuredWifiConfiguration != null) {
 
@@ -398,11 +406,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                             EasyWifi.executeTask(connectToWifiTask);
                         }
 
-                    }
-                }).setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        setPbVisible(false);
                     }
                 });
         builder.create().show();
