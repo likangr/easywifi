@@ -1,17 +1,25 @@
 package com.likang.easywifi.lib.core.task;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.NetworkInfo;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.os.Parcel;
 import android.text.TextUtils;
 
 import com.likang.easywifi.lib.EasyWifi;
+import com.likang.easywifi.lib.util.Logger;
 import com.likang.easywifi.lib.util.WifiEncryptionScheme;
+import com.likang.easywifi.lib.util.WifiUtils;
 
 /**
  * @author likangren
  */
-public class ConnectToWifiTask extends WifiTask {
+public class ConnectToWifiTask extends SpecificWifiTask {
 
     private String mSsid;
     private String mBssid;
@@ -22,6 +30,8 @@ public class ConnectToWifiTask extends WifiTask {
     private boolean mIsConnectToConfiguredWifi;
     private boolean mIsNeedUpdateWifiConfiguration;
 
+    public ConnectToWifiTask() {
+    }
 
     public ConnectToWifiTask(
             String ssid,
@@ -205,9 +215,162 @@ public class ConnectToWifiTask extends WifiTask {
     }
 
     @Override
-    public void run() {
-        super.run();
-        EasyWifi.connectToWifi(this);
+    void onEnvironmentPrepared() {
+
+        if (mIsConnectToConfiguredWifi && !mIsNeedUpdateWifiConfiguration) {
+
+            if (WifiUtils.isAlreadyConnected(mWifiConfiguration.SSID, mWifiConfiguration.BSSID, EasyWifi.getWifiManager())) {
+                callOnTaskSuccess();
+                return;
+            }
+
+        } else {
+
+            if (mIsNeedUpdateWifiConfiguration) {
+                boolean removeNetworkResult = EasyWifi.getWifiManager().removeNetwork(mWifiConfiguration.networkId);
+                if (!removeNetworkResult) {
+                    callOnTaskFail(EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_MUST_THROUGH_SYSTEM_WIFI_SETTING);
+                    return;
+                }
+            }
+
+            WifiConfiguration wifiConfiguration = WifiUtils.addNetWork(EasyWifi.getWifiManager(),
+                    mSsid, mBssid,
+                    mPassword, mEncryptionScheme);
+
+            if (wifiConfiguration.networkId == -1) {
+                callOnTaskFail(EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_ARGUMENTS_ERROR);
+                return;
+            }
+            mWifiConfiguration = wifiConfiguration;
+        }
+
+        //fixme android p (nokia x6) onConnectToWifiStart lock.
+        boolean requestConnectToWifiResult = WifiUtils.connectToConfiguredWifi(EasyWifi.getWifiManager(), mWifiConfiguration.networkId);
+
+        if (requestConnectToWifiResult) {
+            //note: connect to wifi is not timely.
+
+            IntentFilter intentFilter = new IntentFilter();
+            intentFilter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
+
+            registerAutoReleaseReceiver(new BroadcastReceiver() {
+
+                boolean authenticatingIsReceived = false;
+                boolean obtainingIpAddrIsReceived = false;
+                boolean verifyingPoorLinkIsReceived = false;
+                boolean captivePortalCheckIsReceived = false;
+
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    NetworkInfo networkInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
+                    NetworkInfo.DetailedState detailedState = networkInfo.getDetailedState();
+                    Logger.d(TAG, "detailedState=" + detailedState);
+
+                    switch (detailedState) {
+                        //DISCONNECTED
+                        case IDLE:
+
+                            break;
+                        case SCANNING:
+                            break;
+
+                        //CONNECTING
+                        case CONNECTING:
+                            break;
+
+
+                        case AUTHENTICATING:
+                            if (!authenticatingIsReceived) {
+                                authenticatingIsReceived = true;
+                                callOnTaskRunningCurrentStep(EasyWifi.CURRENT_STEP_AUTHENTICATING);
+                            }
+                            break;
+                        case OBTAINING_IPADDR:
+                            if (!obtainingIpAddrIsReceived) {
+                                obtainingIpAddrIsReceived = true;
+                                callOnTaskRunningCurrentStep(EasyWifi.CURRENT_STEP_OBTAINING_IP_ADDR);
+                            }
+                            break;
+                        case VERIFYING_POOR_LINK:
+                            if (!verifyingPoorLinkIsReceived) {
+                                verifyingPoorLinkIsReceived = true;
+                                //Temporary shutdown (network down)
+                                callOnTaskRunningCurrentStep(EasyWifi.CURRENT_STEP_VERIFYING_POOR_LINK);
+                            }
+                            break;
+                        case CAPTIVE_PORTAL_CHECK:
+                            if (!captivePortalCheckIsReceived) {
+                                captivePortalCheckIsReceived = true;
+                                //Determine whether a browser login is required
+                                callOnTaskRunningCurrentStep(EasyWifi.CURRENT_STEP_CAPTIVE_PORTAL_CHECK);
+                            }
+                            break;
+
+                        //CONNECTED
+                        case CONNECTED:
+                            if (obtainingIpAddrIsReceived) {
+                                if (WifiUtils.isAlreadyConnected(mWifiConfiguration.SSID,
+                                        mWifiConfiguration.BSSID, EasyWifi.getWifiManager())) {
+                                    callOnTaskSuccess();
+                                } else {
+                                    callOnTaskFail(EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_UNKNOWN);
+                                }
+                            }
+                            break;
+
+                        //SUSPENDED
+                        case SUSPENDED:
+                            break;
+
+                        //DISCONNECTING
+                        case DISCONNECTING:
+                            break;
+
+                        //DISCONNECTED
+                        case DISCONNECTED:
+                            if (verifyingPoorLinkIsReceived) {
+                                callOnTaskFail(EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_IS_POOR_LINK);
+                                break;
+                            }
+                            if (obtainingIpAddrIsReceived) {
+                                callOnTaskFail(EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_NOT_OBTAINED_IP_ADDR);
+                                break;
+                            }
+                            if (authenticatingIsReceived) {
+                                callOnTaskFail(EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_ERROR_AUTHENTICATING);
+                            }
+                            break;
+                        case FAILED:
+                            break;
+                        case BLOCKED:
+                            break;
+                        default:
+                            break;
+                    }
+
+                }
+
+            }, intentFilter, mConnectToWifiTimeout, EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_TIMEOUT);
+
+        } else {
+            callOnTaskFail(EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_REQUEST_NOT_BE_SATISFIED);
+        }
+
+    }
+
+    @Override
+    void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
+        if (PrepareEnvironmentTask.isAboveLollipopMr1()) {
+            prepareEnvironmentTask.setIsNeedLocationPermission(true);
+            prepareEnvironmentTask.setIsNeedEnableLocation(true);
+        }
+        if (!EasyWifi.isWifiEnabled()) {
+            prepareEnvironmentTask.setIsNeedWifiPermission(true);
+            prepareEnvironmentTask.setIsNeedSetWifiEnabled(true);
+            prepareEnvironmentTask.setWifiEnabled(true);
+            prepareEnvironmentTask.setSetWifiEnabledTimeout(EasyWifi.TIME_OUT_SET_WIFI_ENABLED_DEFAULT);
+        }
     }
 
 
@@ -239,7 +402,7 @@ public class ConnectToWifiTask extends WifiTask {
     @Override
     public String toString() {
         return "ConnectToWifiTask{" +
-                ", mSsid='" + mSsid + '\'' +
+                "mSsid='" + mSsid + '\'' +
                 ", mBssid='" + mBssid + '\'' +
                 ", mPassword='" + mPassword + '\'' +
                 ", mEncryptionScheme='" + mEncryptionScheme + '\'' +
@@ -249,9 +412,10 @@ public class ConnectToWifiTask extends WifiTask {
                 ", mIsNeedUpdateWifiConfiguration=" + mIsNeedUpdateWifiConfiguration +
                 ", mWifiTaskCallback=" + mWifiTaskCallback +
                 ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mLastRunningCurrentStep=" + mLastRunningCurrentStep +
                 ", mFailReason=" + mFailReason +
                 ", mCurrentStatus=" + mCurrentStatus +
+                ", mIsResumeTask=" + mIsResumeTask +
                 '}';
     }
-
 }

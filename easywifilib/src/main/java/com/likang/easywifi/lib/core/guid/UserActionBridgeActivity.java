@@ -9,7 +9,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.likang.easywifi.lib.EasyWifi;
 import com.likang.easywifi.lib.util.IntentManager;
 import com.likang.easywifi.lib.util.LocationUtils;
 import com.likang.easywifi.lib.util.PermissionsManager;
@@ -115,9 +114,11 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
         } else if (mUserActionCode == USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION) {
             userDoneIsWeExcepted = !WifiUtils.isUserForbidWifiPermission() && LocationUtils.checkHasLocationPermissions();
         } else if (mUserActionCode == USER_ACTION_CODE_ENABLE_WIFI_MODULE) {
-            userDoneIsWeExcepted = EasyWifi.isWifiEnabled();
+            //because set wifi enabled is async ，so force true.
+            userDoneIsWeExcepted = true;
         } else if (mUserActionCode == USER_ACTION_CODE_DISABLE_WIFI_MODULE) {
-            userDoneIsWeExcepted = !EasyWifi.isWifiEnabled();
+            //because set wifi enabled is async ，so force true.
+            userDoneIsWeExcepted = true;
         }
         return userDoneIsWeExcepted;
     }

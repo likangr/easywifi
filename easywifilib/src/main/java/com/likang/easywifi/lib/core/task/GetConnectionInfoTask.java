@@ -8,9 +8,12 @@ import com.likang.easywifi.lib.EasyWifi;
 /**
  * @author likangren
  */
-public class GetConnectionInfoTask extends WifiTask {
+public class GetConnectionInfoTask extends SpecificWifiTask {
 
     private WifiInfo mWifiInfo;
+
+    public GetConnectionInfoTask() {
+    }
 
     public GetConnectionInfoTask(WifiTaskCallback wifiTaskCallback) {
         super(wifiTaskCallback);
@@ -28,20 +31,22 @@ public class GetConnectionInfoTask extends WifiTask {
 
     @Override
     void checkParams() {
-
     }
 
     @Override
-    public void run() {
-        super.run();
-        EasyWifi.getConnectionInfo(this);
-    }
-
-    @Override
-    public boolean callOnTaskSuccess() {
+    void onEnvironmentPrepared() {
         mWifiInfo = EasyWifi.getWifiManager().getConnectionInfo();
-        return super.callOnTaskSuccess();
+        callOnTaskSuccess();
     }
+
+    @Override
+    void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
+        if (PrepareEnvironmentTask.isAboveLollipopMr1()) {
+            prepareEnvironmentTask.setIsNeedLocationPermission(true);
+            prepareEnvironmentTask.setIsNeedEnableLocation(true);
+        }
+    }
+
 
     public static final Creator<GetConnectionInfoTask> CREATOR = new Creator<GetConnectionInfoTask>() {
         @Override
@@ -67,8 +72,10 @@ public class GetConnectionInfoTask extends WifiTask {
                 "mWifiInfo=" + mWifiInfo +
                 ", mWifiTaskCallback=" + mWifiTaskCallback +
                 ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mLastRunningCurrentStep=" + mLastRunningCurrentStep +
                 ", mFailReason=" + mFailReason +
                 ", mCurrentStatus=" + mCurrentStatus +
+                ", mIsResumeTask=" + mIsResumeTask +
                 '}';
     }
 }

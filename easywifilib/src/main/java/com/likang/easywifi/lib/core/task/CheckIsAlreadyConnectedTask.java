@@ -16,36 +16,10 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
     private String mBssid;
     private ScanResult mScanResult;
     private boolean mIsAlreadyConnected;
-    private GetConnectionInfoTask mGetConnectionInfoTask = new GetConnectionInfoTask(new WifiTaskCallback<GetConnectionInfoTask>() {
-        @Override
-        public void onTaskStartRun(GetConnectionInfoTask wifiTask) {
-            callOnTaskStartRun();
-        }
+    private GetConnectionInfoTask mGetConnectionInfoTask;
 
-        @Override
-        public void onTaskRunningCurrentStep(GetConnectionInfoTask wifiTask) {
-            callOnTaskRunningCurrentStep(wifiTask.mRunningCurrentStep);
-        }
-
-        @Override
-        public void onTaskSuccess(GetConnectionInfoTask wifiTask) {
-            if (!callOnTaskRunningCurrentStep(EasyWifi.CURRENT_STEP_PREPARE_SUCCESS)) {
-                return;
-            }
-            mIsAlreadyConnected = WifiUtils.isAlreadyConnected(mSsid, mBssid, EasyWifi.getWifiManager());
-            callOnTaskSuccess();
-        }
-
-        @Override
-        public void onTaskFail(GetConnectionInfoTask wifiTask) {
-            callOnTaskFail(wifiTask.getFailReason());
-        }
-
-        @Override
-        public void onTaskCancel(GetConnectionInfoTask wifiTask) {
-            callOnTaskCanceled();
-        }
-    });
+    public CheckIsAlreadyConnectedTask() {
+    }
 
 
     public CheckIsAlreadyConnectedTask(String ssid, String bssid, WifiTaskCallback wifiTaskCallback) {
@@ -118,13 +92,41 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
     @Override
     public void run() {
         super.run();
+        mGetConnectionInfoTask = new GetConnectionInfoTask(new WifiTaskCallback<GetConnectionInfoTask>() {
+            @Override
+            public void onTaskStartRun(GetConnectionInfoTask wifiTask) {
+                callOnTaskStartRun();
+            }
 
+            @Override
+            public void onTaskRunningCurrentStep(GetConnectionInfoTask wifiTask) {
+                callOnTaskRunningCurrentStep(wifiTask.mRunningCurrentStep);
+            }
+
+            @Override
+            public void onTaskSuccess(GetConnectionInfoTask wifiTask) {
+                if (!callOnTaskRunningCurrentStep(EasyWifi.CURRENT_STEP_PREPARE_SUCCESS)) {
+                    return;
+                }
+                mIsAlreadyConnected = WifiUtils.isAlreadyConnected(mSsid, mBssid, EasyWifi.getWifiManager());
+                callOnTaskSuccess();
+            }
+
+            @Override
+            public void onTaskFail(GetConnectionInfoTask wifiTask) {
+                callOnTaskFail(wifiTask.getFailReason());
+            }
+
+            @Override
+            public void onTaskCancel(GetConnectionInfoTask wifiTask) {
+
+            }
+        });
         EasyWifi.executeTask(mGetConnectionInfoTask);
-
     }
 
     @Override
-    public void cancel() {
+    public synchronized void cancel() {
         super.cancel();
         EasyWifi.cancelTask(mGetConnectionInfoTask);
     }
@@ -159,8 +161,10 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
                 ", mGetConnectionInfoTask=" + mGetConnectionInfoTask +
                 ", mWifiTaskCallback=" + mWifiTaskCallback +
                 ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mLastRunningCurrentStep=" + mLastRunningCurrentStep +
                 ", mFailReason=" + mFailReason +
                 ", mCurrentStatus=" + mCurrentStatus +
+                ", mIsResumeTask=" + mIsResumeTask +
                 '}';
     }
 }

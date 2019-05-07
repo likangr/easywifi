@@ -7,10 +7,13 @@ import com.likang.easywifi.lib.EasyWifi;
 /**
  * @author likangren
  */
-public class SetWifiEnabledTask extends WifiTask {
+public class SetWifiEnabledTask extends SpecificWifiTask {
 
     private boolean mEnabled;
     private long mSetWifiEnabledTimeout;
+
+    public SetWifiEnabledTask() {
+    }
 
     public SetWifiEnabledTask(boolean enabled,
                               long setWifiEnabledTimeout,
@@ -51,9 +54,18 @@ public class SetWifiEnabledTask extends WifiTask {
     }
 
     @Override
-    public void run() {
-        super.run();
-        EasyWifi.setWifiEnabled(this);
+    void onEnvironmentPrepared() {
+        callOnTaskSuccess();
+    }
+
+    @Override
+    void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
+        if (EasyWifi.isWifiEnabled() != mEnabled) {
+            prepareEnvironmentTask.setIsNeedWifiPermission(true);
+            prepareEnvironmentTask.setIsNeedSetWifiEnabled(true);
+            prepareEnvironmentTask.setWifiEnabled(mEnabled);
+            prepareEnvironmentTask.setSetWifiEnabledTimeout(mSetWifiEnabledTimeout);
+        }
     }
 
     public static final Creator<SetWifiEnabledTask> CREATOR = new Creator<SetWifiEnabledTask>() {
@@ -82,8 +94,10 @@ public class SetWifiEnabledTask extends WifiTask {
                 ", mSetWifiEnabledTimeout=" + mSetWifiEnabledTimeout +
                 ", mWifiTaskCallback=" + mWifiTaskCallback +
                 ", mRunningCurrentStep=" + mRunningCurrentStep +
+                ", mLastRunningCurrentStep=" + mLastRunningCurrentStep +
                 ", mFailReason=" + mFailReason +
                 ", mCurrentStatus=" + mCurrentStatus +
+                ", mIsResumeTask=" + mIsResumeTask +
                 '}';
     }
 }

@@ -21,7 +21,7 @@ import com.likang.easywifi.lib.EasyWifi;
 import com.likang.easywifi.lib.core.task.CheckIsAlreadyConnectedTask;
 import com.likang.easywifi.lib.core.task.ConnectToWifiTask;
 import com.likang.easywifi.lib.core.task.GetConnectionInfoTask;
-import com.likang.easywifi.lib.core.task.GetWifiPermissionTask;
+import com.likang.easywifi.lib.core.task.PrepareEnvironmentTask;
 import com.likang.easywifi.lib.core.task.ScanWifiTask;
 import com.likang.easywifi.lib.core.task.SetWifiEnabledTask;
 import com.likang.easywifi.lib.core.task.WifiTask;
@@ -46,36 +46,34 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private List<ScanResult> mScanResults;
     private ArrayAdapter<String> mWifiListAdapter;
 
-    private WifiTaskCallback mGetWifiPermissionTaskCallback = new WifiTaskCallback<GetWifiPermissionTask>() {
+    private WifiTaskCallback mPrepareEnvironmentCallback = new WifiTaskCallback<PrepareEnvironmentTask>() {
         @Override
-        public void onTaskStartRun(GetWifiPermissionTask wifiTask) {
+        public void onTaskStartRun(PrepareEnvironmentTask wifiTask) {
             Logger.d(TAG, "onTaskStartRun");
         }
 
         @Override
-        public void onTaskRunningCurrentStep(GetWifiPermissionTask wifiTask) {
+        public void onTaskRunningCurrentStep(PrepareEnvironmentTask wifiTask) {
             Logger.d(TAG, "onTaskRunningCurrentStep,currentStep=" + wifiTask.getRunningCurrentStep());
         }
 
         @Override
-        public void onTaskSuccess(GetWifiPermissionTask wifiTask) {
+        public void onTaskSuccess(PrepareEnvironmentTask wifiTask) {
             Logger.d(TAG, "onTaskSuccess");
-            ToastUtil.showShort(MainActivity.this, "获取wifi操作权限成功");
+            ToastUtil.showShort(MainActivity.this, "权限修复成功");
         }
 
         @Override
-        public void onTaskFail(GetWifiPermissionTask wifiTask) {
+        public void onTaskFail(PrepareEnvironmentTask wifiTask) {
             int failReason = wifiTask.getFailReason();
             Logger.d(TAG, "onTaskRunningCurrentStep,failReason=" + failReason);
-            if (failReason == EasyWifi.FAIL_REASON_WIFI_MODULE_NOT_EXIST) {
-                ToastUtil.showShort(MainActivity.this, "获取wifi操作权限失败，您的设备没有wifi模块");
-            } else if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_WIFI_PERMISSION) {
-                ToastUtil.showShort(MainActivity.this, "获取wifi操作权限失败,用户拒绝");
+            if (failReason == EasyWifi.FAIL_REASON_NOT_HAS_WIFI_AND_LOCATION_PERMISSION) {
+                ToastUtil.showShort(MainActivity.this, "权限修复失败");
             }
         }
 
         @Override
-        public void onTaskCancel(GetWifiPermissionTask wifiTask) {
+        public void onTaskCancel(PrepareEnvironmentTask wifiTask) {
 
         }
 
@@ -111,8 +109,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 ToastUtil.showShort(MainActivity.this, (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi失败，没有wifi操作权限");
             } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT) {
                 ToastUtil.showShort(MainActivity.this, (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi失败，操作超时");
-            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_USER_REJECT) {
-                ToastUtil.showShort(MainActivity.this, (wifiTask.isEnabled() ? "开启" : "关闭") + "wifi失败，用户不允许");
             }
 
         }
@@ -165,8 +161,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 ToastUtil.showShort(MainActivity.this, "wifi扫描失败，没有wifi操作权限");
             } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT) {
                 ToastUtil.showShort(MainActivity.this, "wifi扫描失败，开启wifi超时");
-            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_USER_REJECT) {
-                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，用户不允许开启wifi");
             } else if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_UNKNOWN) {
                 ToastUtil.showShort(MainActivity.this, "wifi扫描失败，未知原因");
             } else if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_TIMEOUT) {
@@ -261,8 +255,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 ToastUtil.showShort(MainActivity.this, "连接失败，没有wifi操作权限");
             } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT) {
                 ToastUtil.showShort(MainActivity.this, "连接失败，开启wifi超时");
-            } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_USER_REJECT) {
-                ToastUtil.showShort(MainActivity.this, "连接失败，用户不允许开启wifi");
             } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_MUST_THROUGH_SYSTEM_WIFI_SETTING) {
                 ToastUtil.showShort(MainActivity.this, "连接失败，需要您在系统WIFI设置中连接");
             } else if (failReason == EasyWifi.FAIL_REASON_CONNECT_TO_WIFI_ARGUMENTS_ERROR) {
@@ -429,6 +421,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         mLvWifiList.setOnItemClickListener(this);
 
         updateConnectionInfo();
+        scanWifi(null);
 
         resumeTaskIfNeed(savedInstanceState);
 
@@ -436,13 +429,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private void resumeTaskIfNeed(Bundle savedInstanceState) {
         if (savedInstanceState != null) {
-
             ArrayList<WifiTask> taskList = savedInstanceState.getParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK);
 
             for (WifiTask wifiTask : taskList) {
 
-                if (wifiTask instanceof GetWifiPermissionTask) {
-                    wifiTask.setWifiTaskCallback(mGetWifiPermissionTaskCallback);
+                if (wifiTask instanceof PrepareEnvironmentTask) {
+                    wifiTask.setWifiTaskCallback(mPrepareEnvironmentCallback);
                 } else if (wifiTask instanceof SetWifiEnabledTask) {
                     wifiTask.setWifiTaskCallback(mOnSetWifiEnabledCallback);
                 } else if (wifiTask instanceof ScanWifiTask) {
@@ -510,6 +502,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
 
 
+    public void fixPermissions(View view) {
+        PrepareEnvironmentTask prepareEnvironmentTask = new PrepareEnvironmentTask();
+        prepareEnvironmentTask.setWifiTaskCallback(mPrepareEnvironmentCallback);
+        prepareEnvironmentTask.setIsNeedWifiPermission(true);
+        prepareEnvironmentTask.setIsNeedLocationPermission(true);
+        prepareEnvironmentTask.setIsGuideUserGrantPermissionsTogether(true);
+        EasyWifi.executeTask(prepareEnvironmentTask);
+    }
+
+    public void cancelTask(View view) {
+        EasyWifi.cancelAllTasks();
+    }
+
     private void setPbVisible(boolean visible) {
         mPbWait.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
@@ -517,7 +522,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK, EasyWifi.getCurrentTasks());
+        outState.putParcelableArrayList(SAVE_INSTANCE_STATE_KEY_WIFI_TASK, EasyWifi.getUnmodifiableCurrentTasks());
     }
 
     @Override
