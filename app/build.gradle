@@ -1,11 +1,15 @@
 apply plugin: 'com.android.application'
 
+def final adaptVersion = 28
+def final minVersion = 14
+
 android {
-    compileSdkVersion 28
+    compileSdkVersion adaptVersion
+
     defaultConfig {
         applicationId "com.likang.easywifi.demo"
-        minSdkVersion 14
-        targetSdkVersion 28
+        minSdkVersion minVersion
+        targetSdkVersion adaptVersion
         versionCode 1
         versionName "1.0"
     }

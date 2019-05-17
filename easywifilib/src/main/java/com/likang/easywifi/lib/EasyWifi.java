@@ -112,7 +112,6 @@ public final class EasyWifi {
     /**
      * @param application
      */
-
     public static void initCore(Application application) {
         synchronized (sInitialiseLock) {
             if (sIsInitialised) {
