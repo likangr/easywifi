@@ -7,7 +7,7 @@ android {
     compileSdkVersion adaptVersion
 
     defaultConfig {
-        applicationId "com.likang.easywifi.demo"
+        applicationId "com.likangr.easywifi.demo"
         minSdkVersion minVersion
         targetSdkVersion adaptVersion
         versionCode 1

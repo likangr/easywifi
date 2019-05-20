@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.likang.easywifi.lib">
+    package="com.likangr.easywifi.lib">
 
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -12,12 +12,12 @@
 
     <application>
         <activity
-            android:name=".core.guid.UserActionBridgeActivity"
+            android:name="com.likangr.easywifi.lib.core.guid.UserActionBridgeActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="behind"
             android:theme="@style/NoTitleTranslucentTheme" />
         <activity
-            android:name=".core.task.ScanWifiTask$RequestSystemWifiScanActivity"
+            android:name="com.likangr.easywifi.lib.core.task.ScanWifiTask$RequestSystemWifiScanActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:launchMode="singleTask"
             android:screenOrientation="behind"
