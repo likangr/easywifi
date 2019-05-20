@@ -12,12 +12,12 @@
 
     <application>
         <activity
-            android:name="com.likangr.easywifi.lib.core.guid.UserActionBridgeActivity"
+            android:name=".core.guid.UserActionBridgeActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="behind"
             android:theme="@style/NoTitleTranslucentTheme" />
         <activity
-            android:name="com.likangr.easywifi.lib.core.task.ScanWifiTask$RequestSystemWifiScanActivity"
+            android:name=".core.task.ScanWifiTask$RequestSystemWifiScanActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:launchMode="singleTask"
             android:screenOrientation="behind"
