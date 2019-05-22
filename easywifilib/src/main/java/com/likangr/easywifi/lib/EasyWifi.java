@@ -12,7 +12,6 @@ import android.text.TextUtils;
 
 import com.likangr.easywifi.lib.core.task.WifiTask;
 import com.likangr.easywifi.lib.util.ApplicationHolder;
-import com.likangr.easywifi.lib.util.Logger;
 import com.likangr.easywifi.lib.util.StringUtils;
 import com.likangr.easywifi.lib.util.WifiUtils;
 
