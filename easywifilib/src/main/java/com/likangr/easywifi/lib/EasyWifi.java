@@ -38,8 +38,8 @@ public final class EasyWifi {
     private static WifiManager sWifiManager;
     private static boolean sIsInitialised = false;
     private static Handler sHandler;
-    private static final Object sInitialiseLock = new Object();
-    private static final Object sCurWifiTaskListLock = new Object();
+    private static final Object INITIALISE_LOCK = new Object();
+    private static final Object CUR_WIFI_TASK_LIST_LOCK = new Object();
 
     private static final ArrayList<WifiTask> CUR_WIFI_TASKS = new ArrayList<>();
 
@@ -113,7 +113,7 @@ public final class EasyWifi {
      * @param application
      */
     public static void initCore(Application application) {
-        synchronized (sInitialiseLock) {
+        synchronized (INITIALISE_LOCK) {
             if (sIsInitialised) {
                 return;
             }
@@ -244,7 +244,7 @@ public final class EasyWifi {
      *
      */
     public static void cancelAllTasks() {
-        synchronized (sCurWifiTaskListLock) {
+        synchronized (CUR_WIFI_TASK_LIST_LOCK) {
             Iterator<WifiTask> iterator = getUnmodifiableCurrentTasks().iterator();
             while (iterator.hasNext()) {
                 iterator.next().cancel();
@@ -256,7 +256,7 @@ public final class EasyWifi {
      * @return
      */
     public static ArrayList<WifiTask> getUnmodifiableCurrentTasks() {
-        synchronized (sCurWifiTaskListLock) {
+        synchronized (CUR_WIFI_TASK_LIST_LOCK) {
             checkIsInitialised();
             return new ArrayList<>(CUR_WIFI_TASKS);
         }
@@ -268,7 +268,7 @@ public final class EasyWifi {
      * @param wifiTask
      */
     public static void removeTask(WifiTask wifiTask) {
-        synchronized (sCurWifiTaskListLock) {
+        synchronized (CUR_WIFI_TASK_LIST_LOCK) {
             CUR_WIFI_TASKS.remove(wifiTask);
         }
     }
@@ -277,7 +277,7 @@ public final class EasyWifi {
      * @param wifiTask
      */
     public static void addTask(WifiTask wifiTask) {
-        synchronized (sCurWifiTaskListLock) {
+        synchronized (CUR_WIFI_TASK_LIST_LOCK) {
             CUR_WIFI_TASKS.add(wifiTask);
         }
     }
@@ -286,7 +286,7 @@ public final class EasyWifi {
      *
      */
     private static void checkIsInitialised() {
-        synchronized (sInitialiseLock) {
+        synchronized (INITIALISE_LOCK) {
             if (!sIsInitialised) {
                 throw new IllegalStateException("You must invoke initCore method first of all.");
             }
