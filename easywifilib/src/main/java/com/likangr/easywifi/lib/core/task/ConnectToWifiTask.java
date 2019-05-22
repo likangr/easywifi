@@ -19,7 +19,7 @@ import com.likangr.easywifi.lib.util.WifiUtils;
 /**
  * @author likangren
  */
-public class ConnectToWifiTask extends SpecificWifiTask {
+public final class ConnectToWifiTask extends SpecificWifiTask {
 
     private String mSsid;
     private String mBssid;
@@ -172,10 +172,6 @@ public class ConnectToWifiTask extends SpecificWifiTask {
         return mIsConnectToConfiguredWifi;
     }
 
-    public void setIsConnectToConfiguredWifi(boolean isConnectToConfiguredWifi) {
-        mIsConnectToConfiguredWifi = isConnectToConfiguredWifi;
-    }
-
     public boolean isNeedUpdateWifiConfiguration() {
         return mIsNeedUpdateWifiConfiguration;
     }
@@ -185,7 +181,7 @@ public class ConnectToWifiTask extends SpecificWifiTask {
     }
 
     @Override
-    void checkParams() {
+    protected void checkParams() {
         if (mConnectToWifiTimeout < 0) {
             throw new IllegalArgumentException("ConnectToWifiTimeout must more than 0!");
         }
@@ -215,7 +211,7 @@ public class ConnectToWifiTask extends SpecificWifiTask {
     }
 
     @Override
-    void onEnvironmentPrepared() {
+    protected void onEnvironmentPrepared() {
 
         if (mIsConnectToConfiguredWifi && !mIsNeedUpdateWifiConfiguration) {
 
@@ -360,7 +356,7 @@ public class ConnectToWifiTask extends SpecificWifiTask {
     }
 
     @Override
-    void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
+    protected void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
         if (PrepareEnvironmentTask.isAboveLollipopMr1()) {
             prepareEnvironmentTask.setIsNeedLocationPermission(true);
             prepareEnvironmentTask.setIsNeedEnableLocation(true);

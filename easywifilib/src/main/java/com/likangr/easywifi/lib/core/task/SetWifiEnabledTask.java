@@ -7,7 +7,7 @@ import com.likangr.easywifi.lib.EasyWifi;
 /**
  * @author likangren
  */
-public class SetWifiEnabledTask extends SpecificWifiTask {
+public final class SetWifiEnabledTask extends SpecificWifiTask {
 
     private boolean mEnabled;
     private long mSetWifiEnabledTimeout;
@@ -47,19 +47,19 @@ public class SetWifiEnabledTask extends SpecificWifiTask {
     }
 
     @Override
-    void checkParams() {
+    protected void checkParams() {
         if (mSetWifiEnabledTimeout < 0) {
             throw new IllegalArgumentException("SetWifiEnabledTimeout must more than 0!");
         }
     }
 
     @Override
-    void onEnvironmentPrepared() {
+    protected void onEnvironmentPrepared() {
         callOnTaskSuccess();
     }
 
     @Override
-    void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
+    protected void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
         if (EasyWifi.isWifiEnabled() != mEnabled) {
             prepareEnvironmentTask.setIsNeedWifiPermission(true);
             prepareEnvironmentTask.setIsNeedSetWifiEnabled(true);

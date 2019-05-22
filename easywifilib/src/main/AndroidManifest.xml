@@ -13,6 +13,7 @@
     <application>
         <activity
             android:name=".core.guid.UserActionBridgeActivity"
+            android:launchMode="singleTask"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="behind"
             android:theme="@style/NoTitleTranslucentTheme" />

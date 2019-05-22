@@ -8,7 +8,7 @@ import com.likangr.easywifi.lib.EasyWifi;
 /**
  * @author likangren
  */
-public class GetConnectionInfoTask extends SpecificWifiTask {
+public final class GetConnectionInfoTask extends SpecificWifiTask {
 
     private WifiInfo mWifiInfo;
 
@@ -30,17 +30,17 @@ public class GetConnectionInfoTask extends SpecificWifiTask {
 
 
     @Override
-    void checkParams() {
+    protected void checkParams() {
     }
 
     @Override
-    void onEnvironmentPrepared() {
+    protected void onEnvironmentPrepared() {
         mWifiInfo = EasyWifi.getWifiManager().getConnectionInfo();
         callOnTaskSuccess();
     }
 
     @Override
-    void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
+    protected void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
         if (PrepareEnvironmentTask.isAboveLollipopMr1()) {
             prepareEnvironmentTask.setIsNeedLocationPermission(true);
             prepareEnvironmentTask.setIsNeedEnableLocation(true);

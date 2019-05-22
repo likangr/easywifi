@@ -17,7 +17,7 @@ import com.likangr.easywifi.lib.util.WifiUtils;
 /**
  * @author likangren
  */
-public class PrepareEnvironmentTask extends WifiTask {
+public final class PrepareEnvironmentTask extends WifiTask {
 
     private boolean mIsNeedLocationPermission;
     private boolean mIsNeedEnableLocation;
@@ -27,9 +27,16 @@ public class PrepareEnvironmentTask extends WifiTask {
     private long mSetWifiEnabledTimeout;
     private boolean mIsGuideUserGrantPermissionsTogether;
 
+    private boolean mIsCreatedByLib;
+
     public PrepareEnvironmentTask() {
     }
 
+    static PrepareEnvironmentTask createForLib() {
+        PrepareEnvironmentTask prepareEnvironmentTask = new PrepareEnvironmentTask();
+        prepareEnvironmentTask.mIsCreatedByLib = true;
+        return prepareEnvironmentTask;
+    }
 
     public PrepareEnvironmentTask(boolean isNeedLocationPermission,
                                   boolean isNeedEnableLocation,
@@ -64,6 +71,7 @@ public class PrepareEnvironmentTask extends WifiTask {
         mWifiEnabled = in.readByte() == 1;
         mSetWifiEnabledTimeout = in.readLong();
         mIsGuideUserGrantPermissionsTogether = in.readByte() == 1;
+        mIsCreatedByLib = in.readByte() == 1;
     }
 
     public boolean isNeedLocationPermission() {
@@ -130,7 +138,7 @@ public class PrepareEnvironmentTask extends WifiTask {
     }
 
     @Override
-    void checkParams() {
+    protected void checkParams() {
         if (mSetWifiEnabledTimeout < 0) {
             throw new IllegalArgumentException("SetWifiEnabledTimeout must more than 0!");
         }
@@ -143,7 +151,7 @@ public class PrepareEnvironmentTask extends WifiTask {
             return;
         }
 
-        //The following three runnable tasks are in reverse order.5, 4,3,2,1;
+        //The following three runnable tasks are in reverse order.5,4,3,2,1;
 
         //step 5.
         final Runnable checkSetWifiEnabledIsSuccess = new Runnable() {
@@ -400,21 +408,23 @@ public class PrepareEnvironmentTask extends WifiTask {
         }
     }
 
-
-    public static boolean isAboveLollipopMr1() {
-        return Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1;
+    @Override
+    protected synchronized void callOnTaskSuccess() {
+        super.callOnTaskSuccess(!mIsCreatedByLib);
     }
 
     @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        super.writeToParcel(dest, flags);
-        dest.writeByte((byte) (mIsNeedLocationPermission ? 1 : 0));
-        dest.writeByte((byte) (mIsNeedEnableLocation ? 1 : 0));
-        dest.writeByte((byte) (mIsNeedWifiPermission ? 1 : 0));
-        dest.writeByte((byte) (mIsNeedSetWifiEnabled ? 1 : 0));
-        dest.writeByte((byte) (mWifiEnabled ? 1 : 0));
-        dest.writeLong(mSetWifiEnabledTimeout);
-        dest.writeByte((byte) (mIsGuideUserGrantPermissionsTogether ? 1 : 0));
+    protected synchronized void callOnTaskFail(int failReason) {
+        super.callOnTaskFail(failReason, !mIsCreatedByLib);
+    }
+
+    @Override
+    protected synchronized void callOnTaskCanceled() {
+        super.callOnTaskCanceled(!mIsCreatedByLib);
+    }
+
+    public static boolean isAboveLollipopMr1() {
+        return Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1;
     }
 
     public static final Creator<PrepareEnvironmentTask> CREATOR = new Creator<PrepareEnvironmentTask>() {
@@ -428,6 +438,19 @@ public class PrepareEnvironmentTask extends WifiTask {
             return new PrepareEnvironmentTask[size];
         }
     };
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        super.writeToParcel(dest, flags);
+        dest.writeByte((byte) (mIsNeedLocationPermission ? 1 : 0));
+        dest.writeByte((byte) (mIsNeedEnableLocation ? 1 : 0));
+        dest.writeByte((byte) (mIsNeedWifiPermission ? 1 : 0));
+        dest.writeByte((byte) (mIsNeedSetWifiEnabled ? 1 : 0));
+        dest.writeByte((byte) (mWifiEnabled ? 1 : 0));
+        dest.writeLong(mSetWifiEnabledTimeout);
+        dest.writeByte((byte) (mIsGuideUserGrantPermissionsTogether ? 1 : 0));
+        dest.writeByte((byte) (mIsCreatedByLib ? 1 : 0));
+    }
 
     @Override
     public String toString() {

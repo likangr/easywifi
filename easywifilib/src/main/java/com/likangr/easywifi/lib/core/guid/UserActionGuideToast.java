@@ -20,14 +20,21 @@ public class UserActionGuideToast {
 
     private static final String TAG = "UserActionGuideToast";
 
+    private static Toast sToast;
 
-    public static void showGuideToast(Context context, String actionTitle, String actionTip, int duration) {
-
-        final Toast toast = Toast.makeText(context, null, duration);
-        toast.setGravity(Gravity.FILL_HORIZONTAL | Gravity.BOTTOM, 0, 0);
+    /**
+     * @param context
+     * @param actionTitle
+     * @param actionTip
+     * @param duration
+     */
+    public static void show(Context context, String actionTitle, String actionTip, int duration) {
+        dismiss();
+        sToast = Toast.makeText(context, null, duration);
+        sToast.setGravity(Gravity.FILL_HORIZONTAL | Gravity.BOTTOM, 0, 0);
 
         View view = View.inflate(context, R.layout.toast_user_action_guide, null);
-        toast.setView(view);
+        sToast.setView(view);
 
         TextView tvActionTitle = view.findViewById(R.id.tv_action_title);
         TextView tvActionTip = view.findViewById(R.id.tv_action_tip);
@@ -38,15 +45,15 @@ public class UserActionGuideToast {
         ivDismiss.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                toast.cancel();
+                sToast.cancel();
             }
         });
 
 
         try {
-            Field mTnFiled = toast.getClass().getDeclaredField("mTN");
+            Field mTnFiled = sToast.getClass().getDeclaredField("mTN");
             mTnFiled.setAccessible(true);
-            Object mTnObject = mTnFiled.get(toast);
+            Object mTnObject = mTnFiled.get(sToast);
 
             Field mParamsFiled = mTnObject.getClass().getDeclaredField("mParams");
             mParamsFiled.setAccessible(true);
@@ -61,8 +68,14 @@ public class UserActionGuideToast {
             e.printStackTrace();
         }
 
-        ToastHooker.show(toast);
+        ToastHooker.show(sToast);
     }
 
+
+    public static void dismiss() {
+        if (sToast != null) {
+            sToast.cancel();
+        }
+    }
 
 }

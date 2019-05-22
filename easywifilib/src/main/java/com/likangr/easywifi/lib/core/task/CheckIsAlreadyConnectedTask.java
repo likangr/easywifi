@@ -10,13 +10,12 @@ import com.likangr.easywifi.lib.util.WifiUtils;
 /**
  * @author likangren
  */
-public class CheckIsAlreadyConnectedTask extends WifiTask {
+public class CheckIsAlreadyConnectedTask extends SpecificWifiTask {
 
     private String mSsid;
     private String mBssid;
     private ScanResult mScanResult;
     private boolean mIsAlreadyConnected;
-    private GetConnectionInfoTask mGetConnectionInfoTask;
 
     public CheckIsAlreadyConnectedTask() {
     }
@@ -40,7 +39,6 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
         mScanResult = in.readParcelable(ScanResult.class.getClassLoader());
         mIsAlreadyConnected = in.readByte() == 1;
     }
-
 
     public String getSsid() {
         return mSsid;
@@ -66,69 +64,29 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
         mScanResult = scanResult;
     }
 
-    public GetConnectionInfoTask getGetConnectionInfoTask() {
-        return mGetConnectionInfoTask;
-    }
-
-    public void setGetConnectionInfoTask(GetConnectionInfoTask getConnectionInfoTask) {
-        mGetConnectionInfoTask = getConnectionInfoTask;
-    }
-
     public boolean getIsAlreadyConnected() {
         return mIsAlreadyConnected;
     }
 
-    public void setIsAlreadyConnected(boolean isAlreadyConnected) {
-        mIsAlreadyConnected = isAlreadyConnected;
-    }
-
     @Override
-    void checkParams() {
+    protected void checkParams() {
         if (TextUtils.isEmpty(mSsid)) {
             throw new IllegalArgumentException("Ssid can not be empty!");
         }
     }
 
     @Override
-    public void run() {
-        super.run();
-        mGetConnectionInfoTask = new GetConnectionInfoTask(new WifiTaskCallback<GetConnectionInfoTask>() {
-            @Override
-            public void onTaskStartRun(GetConnectionInfoTask wifiTask) {
-                callOnTaskStartRun();
-            }
-
-            @Override
-            public void onTaskRunningCurrentStep(GetConnectionInfoTask wifiTask) {
-                callOnTaskRunningCurrentStep(wifiTask.mRunningCurrentStep);
-            }
-
-            @Override
-            public void onTaskSuccess(GetConnectionInfoTask wifiTask) {
-                if (!callOnTaskRunningCurrentStep(EasyWifi.CURRENT_STEP_PREPARE_SUCCESS)) {
-                    return;
-                }
-                mIsAlreadyConnected = WifiUtils.isAlreadyConnected(mSsid, mBssid, EasyWifi.getWifiManager());
-                callOnTaskSuccess();
-            }
-
-            @Override
-            public void onTaskFail(GetConnectionInfoTask wifiTask) {
-                callOnTaskFail(wifiTask.getFailReason());
-            }
-
-            @Override
-            public void onTaskCancel(GetConnectionInfoTask wifiTask) {
-
-            }
-        });
-        EasyWifi.executeTask(mGetConnectionInfoTask);
+    protected void onEnvironmentPrepared() {
+        mIsAlreadyConnected = WifiUtils.isAlreadyConnected(mSsid, mBssid, EasyWifi.getWifiManager());
+        callOnTaskSuccess();
     }
 
     @Override
-    public synchronized void cancel() {
-        super.cancel();
-        EasyWifi.cancelTask(mGetConnectionInfoTask);
+    protected void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
+        if (PrepareEnvironmentTask.isAboveLollipopMr1()) {
+            prepareEnvironmentTask.setIsNeedLocationPermission(true);
+            prepareEnvironmentTask.setIsNeedEnableLocation(true);
+        }
     }
 
     public static final Creator<CheckIsAlreadyConnectedTask> CREATOR = new Creator<CheckIsAlreadyConnectedTask>() {
@@ -158,7 +116,6 @@ public class CheckIsAlreadyConnectedTask extends WifiTask {
                 ", mBssid='" + mBssid + '\'' +
                 ", mScanResult=" + mScanResult +
                 ", mIsAlreadyConnected=" + mIsAlreadyConnected +
-                ", mGetConnectionInfoTask=" + mGetConnectionInfoTask +
                 ", mWifiTaskCallback=" + mWifiTaskCallback +
                 ", mRunningCurrentStep=" + mRunningCurrentStep +
                 ", mLastRunningCurrentStep=" + mLastRunningCurrentStep +

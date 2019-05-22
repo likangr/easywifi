@@ -21,28 +21,29 @@ public abstract class WifiTask implements Runnable, Parcelable {
     public static final int STATUS_FAILED = 4;
     public static final int STATUS_CANCELED = 5;
 
-    WifiTaskCallback mWifiTaskCallback;
+    protected WifiTaskCallback mWifiTaskCallback;
 
-    int mRunningCurrentStep;
-    int mLastRunningCurrentStep;
-    int mFailReason;
-    int mCurrentStatus = STATUS_IDLE;
-    private String mTag;
-    boolean mIsResumeTask;
+    protected int mRunningCurrentStep;
+    protected int mLastRunningCurrentStep;
+    protected int mFailReason;
+    protected int mCurrentStatus = STATUS_IDLE;
+    protected String mTag;
+    protected boolean mIsResumeTask;
 
     private Runnable mTimeoutRunnable;
     private BroadcastReceiver mAutoReleaseBroadcastReceiver;
 
-    WifiTask() {
+
+    protected WifiTask() {
     }
 
-    WifiTask(Parcel in) {
+    protected WifiTask(Parcel in) {
         mLastRunningCurrentStep = in.readInt();
         mTag = in.readString();
         mIsResumeTask = true;
     }
 
-    WifiTask(WifiTaskCallback wifiTaskCallback) {
+    protected WifiTask(WifiTaskCallback wifiTaskCallback) {
         mWifiTaskCallback = wifiTaskCallback;
     }
 
@@ -83,10 +84,10 @@ public abstract class WifiTask implements Runnable, Parcelable {
         return mLastRunningCurrentStep;
     }
 
-    synchronized boolean registerAutoReleaseReceiver(BroadcastReceiver receiver,
-                                                     IntentFilter filter,
-                                                     long timeout,
-                                                     final int timeoutFailReason) {
+    protected synchronized boolean registerAutoReleaseReceiver(BroadcastReceiver receiver,
+                                                               IntentFilter filter,
+                                                               long timeout,
+                                                               final int timeoutFailReason) {
         if (mCurrentStatus == STATUS_CANCELED) {
             return false;
         }
@@ -104,7 +105,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
         return true;
     }
 
-    private synchronized void unregisterAutoReleaseReceiver() {
+    protected void unregisterAutoReleaseReceiver() {
         if (mCurrentStatus == STATUS_CANCELED) {
             return;
         }
@@ -119,11 +120,10 @@ public abstract class WifiTask implements Runnable, Parcelable {
         }
     }
 
-
-    abstract void checkParams();
+    protected abstract void checkParams();
 
     @Override
-    public void run() {
+    public synchronized void run() {
         checkParams();
     }
 
@@ -136,11 +136,10 @@ public abstract class WifiTask implements Runnable, Parcelable {
         callOnTaskCanceled();
     }
 
-    public synchronized boolean callOnTaskStartRun() {
+    protected synchronized boolean callOnTaskStartRun() {
         if (mCurrentStatus == STATUS_CANCELED) {
             return false;
         }
-        EasyWifi.addTask(this);
         mCurrentStatus = STATUS_RUNNING;
         if (mWifiTaskCallback != null) {
             mWifiTaskCallback.onTaskStartRun(this);
@@ -151,7 +150,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
         return true;
     }
 
-    public synchronized boolean callOnTaskRunningCurrentStep(int currentStep) {
+    protected synchronized boolean callOnTaskRunningCurrentStep(int currentStep) {
         if (mCurrentStatus == STATUS_CANCELED) {
             return false;
         }
@@ -166,44 +165,54 @@ public abstract class WifiTask implements Runnable, Parcelable {
         return true;
     }
 
-    public synchronized boolean callOnTaskSuccess() {
+    protected synchronized void callOnTaskSuccess() {
+        callOnTaskSuccess(true);
+    }
+
+    protected synchronized void callOnTaskSuccess(boolean isCallExecuteNextWifiTaskIfHasMethod) {
         if (mCurrentStatus == STATUS_CANCELED) {
-            return false;
+            return;
         }
         unregisterAutoReleaseReceiver();
-        EasyWifi.removeTask(this);
         mCurrentStatus = STATUS_SUCCEED;
         if (mWifiTaskCallback != null) {
             mWifiTaskCallback.onTaskSuccess(this);
         }
-        if (mCurrentStatus == STATUS_CANCELED) {
-            return false;
+        if (isCallExecuteNextWifiTaskIfHasMethod) {
+            EasyWifi.executeNextWifiTaskIfHas();
         }
-        return true;
     }
 
-    public synchronized boolean callOnTaskFail(int failReason) {
+    protected synchronized void callOnTaskFail(int failReason) {
+        callOnTaskFail(failReason, true);
+    }
+
+    protected synchronized void callOnTaskFail(int failReason, boolean isCallExecuteNextWifiTaskIfHasMethod) {
         if (mCurrentStatus == STATUS_CANCELED) {
-            return false;
+            return;
         }
         unregisterAutoReleaseReceiver();
-        EasyWifi.removeTask(this);
         mCurrentStatus = STATUS_FAILED;
         mFailReason = failReason;
         if (mWifiTaskCallback != null) {
             mWifiTaskCallback.onTaskFail(this);
         }
-        if (mCurrentStatus == STATUS_CANCELED) {
-            return false;
+        if (isCallExecuteNextWifiTaskIfHasMethod) {
+            EasyWifi.executeNextWifiTaskIfHas();
         }
-        return true;
     }
 
-    public synchronized void callOnTaskCanceled() {
-        EasyWifi.removeTask(this);
+    protected synchronized void callOnTaskCanceled() {
+        callOnTaskCanceled(true);
+    }
+
+    protected synchronized void callOnTaskCanceled(boolean isCallExecuteNextWifiTaskIfHasMethod) {
         mCurrentStatus = STATUS_CANCELED;
         if (mWifiTaskCallback != null) {
             mWifiTaskCallback.onTaskCancel(this);
+        }
+        if (isCallExecuteNextWifiTaskIfHasMethod) {
+            EasyWifi.executeNextWifiTaskIfHas();
         }
     }
 

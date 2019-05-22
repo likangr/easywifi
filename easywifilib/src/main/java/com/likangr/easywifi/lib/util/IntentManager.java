@@ -26,7 +26,6 @@ public class IntentManager {
     public static void gotoRequestSystemWifiScanActivity() {
         Application application = ApplicationHolder.getApplication();
         Intent intent = new Intent(application, ScanWifiTask.RequestSystemWifiScanActivity.class);
-        intent.putExtra(ScanWifiTask.RequestSystemWifiScanActivity.INTENT_EXTRA_KEY_IS_REQUEST_SYSTEM_WIFI_SETTING_SCAN, true);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         application.startActivity(intent);
     }

@@ -1,6 +1,8 @@
 package com.likangr.easywifi.lib.core.guid;
 
 import android.Manifest;
+import android.app.ActivityManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
@@ -9,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.likangr.easywifi.lib.EasyWifi;
 import com.likangr.easywifi.lib.util.IntentManager;
 import com.likangr.easywifi.lib.util.LocationUtils;
 import com.likangr.easywifi.lib.util.PermissionsManager;
@@ -38,6 +41,22 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
     private int mUserActionCode;
     private boolean mIsFirstOnResume = true;
 
+
+    private Runnable mCheckUserHasDoneRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (checkUserDoneIsWeExcepted(false)) {
+                startActivity(new Intent(UserActionBridgeActivity.this, UserActionBridgeActivity.class));
+                //for compat:
+                ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                activityManager.moveTaskToFront(UserActionBridgeActivity.this.getTaskId(), 0);
+            } else {
+                sendCheckUserHasDoneSignal();
+            }
+        }
+    };
+
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,14 +71,16 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
 
         switch (mUserActionCode) {
             case USER_ACTION_CODE_ENABLE_LOCATION_MODULE:
+                sendCheckUserHasDoneSignal();
                 IntentManager.gotoLocationSettings(this);
-                UserActionGuideToast.showGuideToast(this, "需要打开「位置信息服务」",
+                UserActionGuideToast.show(this, "需要打开「位置信息服务」",
                         "操作指南：\n1.找到「位置信息/定位」相关按钮并打开对应开关\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             case USER_ACTION_CODE_REQUEST_LOCATION_PERMISSION:
                 if (LocationUtils.isUserForbidLocationPermissions(this)) {
+                    sendCheckUserHasDoneSignal();
                     IntentManager.gotoSelfPermissionSetting(this);
-                    UserActionGuideToast.showGuideToast(this, "需要「位置信息权限」",
+                    UserActionGuideToast.show(this, "需要「位置信息权限」",
                             "操作指南：\n1.进入「权限」设置，找到「位置信息/定位」相关按钮并允许权限\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 } else {
                     PermissionsManager.request(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -68,28 +89,36 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
                 }
                 break;
             case USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION:
+                sendCheckUserHasDoneSignal();
                 IntentManager.gotoSelfPermissionSetting(this);
-                UserActionGuideToast.showGuideToast(this, "需要「WIFI操作权限」",
+                UserActionGuideToast.show(this, "需要「WIFI操作权限」",
                         "操作指南：\n1.进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」相关按钮并允许权限\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             case USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_AND_LOCATION_PERMISSION:
+                sendCheckUserHasDoneSignal();
                 IntentManager.gotoSelfPermissionSetting(this);
-                UserActionGuideToast.showGuideToast(this, "需要「WIFI操作权限」和「位置信息权限」",
+                UserActionGuideToast.show(this, "需要「WIFI操作权限」和「位置信息权限」",
                         "操作指南：\n1.进入「权限」设置，找到「连接WLAN网络和断开连接/开启关闭WIFI」及「位置信息/定位」相关按钮并允许权限\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             case USER_ACTION_CODE_ENABLE_WIFI_MODULE:
+                sendCheckUserHasDoneSignal();
                 IntentManager.gotoWifiSettings(this);
-                UserActionGuideToast.showGuideToast(this, "需要打开「WLAN/WIFI」",
+                UserActionGuideToast.show(this, "需要打开「WLAN/WIFI」",
                         "操作指南：\n1.找到「打开WLAN/WIFI」相关按钮并打开对应开关\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             case USER_ACTION_CODE_DISABLE_WIFI_MODULE:
+                sendCheckUserHasDoneSignal();
                 IntentManager.gotoWifiSettings(this);
-                UserActionGuideToast.showGuideToast(this, "需要关闭「WLAN/WIFI」",
+                UserActionGuideToast.show(this, "需要关闭「WLAN/WIFI」",
                         "操作指南：\n1.找到「打开WLAN/WIFI」相关按钮并关闭对应开关\n2.操作完成后点击返回键返回应用", Toast.LENGTH_LONG);
                 break;
             default:
                 break;
         }
+    }
+
+    private void sendCheckUserHasDoneSignal() {
+        EasyWifi.getHandler().postDelayed(mCheckUserHasDoneRunnable, 200);
     }
 
     @Override
@@ -98,12 +127,14 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
         if (mIsFirstOnResume) {
             mIsFirstOnResume = false;
         } else {
-            invokeCallback(checkUserDoneIsWeExcepted());
+            UserActionGuideToast.dismiss();
+            EasyWifi.getHandler().removeCallbacks(mCheckUserHasDoneRunnable);
+            invokeCallback(checkUserDoneIsWeExcepted(true));
         }
 
     }
 
-    private boolean checkUserDoneIsWeExcepted() {
+    private boolean checkUserDoneIsWeExcepted(boolean isFromOnResume) {
         boolean userDoneIsWeExcepted = false;
         if (mUserActionCode == USER_ACTION_CODE_GUIDE_USER_GRANT_WIFI_PERMISSION) {
             userDoneIsWeExcepted = !WifiUtils.isUserForbidWifiPermission();
@@ -115,10 +146,10 @@ public class UserActionBridgeActivity extends AppCompatActivity implements Permi
             userDoneIsWeExcepted = !WifiUtils.isUserForbidWifiPermission() && LocationUtils.checkHasLocationPermissions();
         } else if (mUserActionCode == USER_ACTION_CODE_ENABLE_WIFI_MODULE) {
             //because set wifi enabled is async ，so force true.
-            userDoneIsWeExcepted = true;
+            userDoneIsWeExcepted = isFromOnResume || EasyWifi.isWifiEnabled();
         } else if (mUserActionCode == USER_ACTION_CODE_DISABLE_WIFI_MODULE) {
             //because set wifi enabled is async ，so force true.
-            userDoneIsWeExcepted = true;
+            userDoneIsWeExcepted = isFromOnResume || !EasyWifi.isWifiEnabled();
         }
         return userDoneIsWeExcepted;
     }

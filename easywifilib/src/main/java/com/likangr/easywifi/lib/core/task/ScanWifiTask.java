@@ -22,11 +22,13 @@ import com.likangr.easywifi.lib.util.IntentManager;
 /**
  * @author likangren
  */
-public class ScanWifiTask extends SpecificWifiTask {
+public final class ScanWifiTask extends SpecificWifiTask {
 
     private long mScanWifiTimeout;
     private int mScanWifiWay;
     private boolean mIsAutoSwitchToThroughSystemWifi;
+
+    private boolean mIsHasTriedThroughSystemWifi = false;
 
     public ScanWifiTask() {
     }
@@ -77,7 +79,7 @@ public class ScanWifiTask extends SpecificWifiTask {
 
 
     @Override
-    void checkParams() {
+    protected void checkParams() {
 
         if (mScanWifiTimeout < 0) {
             throw new IllegalArgumentException("ScanWifiTimeout must more than 0!");
@@ -90,11 +92,15 @@ public class ScanWifiTask extends SpecificWifiTask {
     }
 
     @Override
-    void onEnvironmentPrepared() {
+    protected void onEnvironmentPrepared() {
+        scanWifi(false);
+    }
+
+    private void scanWifi(boolean isTryThroughSystemWifi) {
         boolean requestStartScanResult = false;
         boolean isNeedSwitchToThroughSystemWifi = false;
 
-        if (EasyWifi.SCAN_WIFI_WAY_INITIATIVE == mScanWifiWay) {
+        if (!isTryThroughSystemWifi && EasyWifi.SCAN_WIFI_WAY_INITIATIVE == mScanWifiWay) {
             //Take the initiative to call
             requestStartScanResult = EasyWifi.getWifiManager().startScan();
             if (!requestStartScanResult && mIsAutoSwitchToThroughSystemWifi) {
@@ -102,7 +108,7 @@ public class ScanWifiTask extends SpecificWifiTask {
             }
         }
 
-        if (isNeedSwitchToThroughSystemWifi || EasyWifi.SCAN_WIFI_WAY_THROUGH_WIFI_SETTING == mScanWifiWay) {
+        if (isTryThroughSystemWifi || isNeedSwitchToThroughSystemWifi || EasyWifi.SCAN_WIFI_WAY_THROUGH_WIFI_SETTING == mScanWifiWay) {
 
             requestStartScanResult = true;
             IntentManager.gotoRequestSystemWifiScanActivity();
@@ -140,7 +146,7 @@ public class ScanWifiTask extends SpecificWifiTask {
     }
 
     @Override
-    void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
+    protected void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask) {
         if (PrepareEnvironmentTask.isAboveLollipopMr1()) {
             prepareEnvironmentTask.setIsNeedLocationPermission(true);
             prepareEnvironmentTask.setIsNeedEnableLocation(true);
@@ -153,6 +159,22 @@ public class ScanWifiTask extends SpecificWifiTask {
         }
     }
 
+    @Override
+    public synchronized void callOnTaskFail(int failReason) {
+        if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED ||
+                failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_TIMEOUT ||
+                failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_UNKNOWN) {
+            if (!mIsHasTriedThroughSystemWifi && EasyWifi.SCAN_WIFI_WAY_INITIATIVE == mScanWifiWay && mIsAutoSwitchToThroughSystemWifi) {
+                unregisterAutoReleaseReceiver();
+                mIsHasTriedThroughSystemWifi = true;
+                scanWifi(true);
+            } else {
+                super.callOnTaskFail(failReason);
+            }
+        } else {
+            super.callOnTaskFail(failReason);
+        }
+    }
 
     public static final Creator<ScanWifiTask> CREATOR = new Creator<ScanWifiTask>() {
         @Override
@@ -192,46 +214,37 @@ public class ScanWifiTask extends SpecificWifiTask {
 
     public static class RequestSystemWifiScanActivity extends AppCompatActivity {
 
-        private static final String TAG = "RequestSystemWifiScanActivity";
-        public static final String INTENT_EXTRA_KEY_IS_REQUEST_SYSTEM_WIFI_SETTING_SCAN = "is_request_system_wifi_setting_scan";
+        private static final long WAIT_INVOKE_STOP_TIMEOUT = 2000;
+        private static final long SETTING_WIFI_PAGE_SHOW_TIME = 500;
 
-        private static final long INVOKE_ON_STOP_TIMEOUT = 2000;
-
-        private boolean mIsInvokedOnStop = false;
+        private Runnable mFinishRunnable = new Runnable() {
+            @Override
+            public void run() {
+                UserActionGuideToast.dismiss();
+                startActivity(new Intent(RequestSystemWifiScanActivity.this, RequestSystemWifiScanActivity.class));
+                //for compat:
+                ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                activityManager.moveTaskToFront(RequestSystemWifiScanActivity.this.getTaskId(), 0);
+            }
+        };
 
         @Override
         protected void onCreate(@Nullable Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
-            boolean isRequestSystemWifiSettingScan = getIntent().getBooleanExtra(INTENT_EXTRA_KEY_IS_REQUEST_SYSTEM_WIFI_SETTING_SCAN, false);
-            if (!isRequestSystemWifiSettingScan) {
-                finish();
-                return;
-            }
-
-            EasyWifi.getHandler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (!mIsInvokedOnStop) {
-                        finish();
-                    }
-                }
-            }, INVOKE_ON_STOP_TIMEOUT);
 
             IntentManager.gotoWifiSettings(this);
-            UserActionGuideToast.showGuideToast(this, "正在扫描wifi",
+            UserActionGuideToast.show(this, "正在扫描wifi",
                     "即将返回刚才的页面", Toast.LENGTH_SHORT);
+
+            EasyWifi.getHandler().postDelayed(mFinishRunnable, WAIT_INVOKE_STOP_TIMEOUT);
         }
 
 
         @Override
         protected void onStop() {
             super.onStop();
-            mIsInvokedOnStop = true;
-            startActivity(new Intent(this, this.getClass()));
-            //for compat:
-            ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-            activityManager.moveTaskToFront(RequestSystemWifiScanActivity.this.getTaskId(), 0);
-
+            EasyWifi.getHandler().removeCallbacks(mFinishRunnable);
+            EasyWifi.getHandler().postDelayed(mFinishRunnable, SETTING_WIFI_PAGE_SHOW_TIME);
         }
 
         @Override

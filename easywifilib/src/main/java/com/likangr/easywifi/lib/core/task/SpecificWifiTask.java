@@ -8,23 +8,23 @@ import com.likangr.easywifi.lib.EasyWifi;
  * @author likangren
  */
 public abstract class SpecificWifiTask extends WifiTask {
-    private PrepareEnvironmentTask mPrepareEnvironmentTask = new PrepareEnvironmentTask();
+    private PrepareEnvironmentTask mPrepareEnvironmentTask = PrepareEnvironmentTask.createForLib();
 
-    SpecificWifiTask() {
+    protected SpecificWifiTask() {
     }
 
-    SpecificWifiTask(WifiTaskCallback wifiTaskCallback) {
+    protected SpecificWifiTask(WifiTaskCallback wifiTaskCallback) {
         super(wifiTaskCallback);
     }
 
-    SpecificWifiTask(Parcel in) {
+    protected SpecificWifiTask(Parcel in) {
         super(in);
         mPrepareEnvironmentTask = in.readParcelable(PrepareEnvironmentTask.class.getClassLoader());
     }
 
-    abstract void onEnvironmentPrepared();
+    protected abstract void onEnvironmentPrepared();
 
-    abstract void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask);
+    protected abstract void initPrepareEnvironment(PrepareEnvironmentTask prepareEnvironmentTask);
 
     @Override
     public synchronized void run() {
@@ -61,7 +61,7 @@ public abstract class SpecificWifiTask extends WifiTask {
             }
 
         });
-        EasyWifi.executeTask(mPrepareEnvironmentTask);
+        mPrepareEnvironmentTask.run();
     }
 
     @Override
@@ -73,6 +73,6 @@ public abstract class SpecificWifiTask extends WifiTask {
     @Override
     public synchronized void cancel() {
         super.cancel();
-        EasyWifi.cancelTask(mPrepareEnvironmentTask);
+        mPrepareEnvironmentTask.cancel();
     }
 }

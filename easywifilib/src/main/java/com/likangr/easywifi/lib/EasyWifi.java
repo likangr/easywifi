@@ -12,6 +12,7 @@ import android.text.TextUtils;
 
 import com.likangr.easywifi.lib.core.task.WifiTask;
 import com.likangr.easywifi.lib.util.ApplicationHolder;
+import com.likangr.easywifi.lib.util.Logger;
 import com.likangr.easywifi.lib.util.StringUtils;
 import com.likangr.easywifi.lib.util.WifiUtils;
 
@@ -39,9 +40,9 @@ public final class EasyWifi {
     private static boolean sIsInitialised = false;
     private static Handler sHandler;
     private static final Object INITIALISE_LOCK = new Object();
-    private static final Object CUR_WIFI_TASK_LIST_LOCK = new Object();
-
-    private static final ArrayList<WifiTask> CUR_WIFI_TASKS = new ArrayList<>();
+    private static final Object WIFI_TASKS_QUEUE_LOCK = new Object();
+    private static WifiTask sCurrentRunningWifiTask;
+    private static final ArrayList<WifiTask> WIFI_TASKS_QUEUE = new ArrayList<>();
 
     public static final int FAIL_REASON_SET_LOCATION_ENABLED_USER_REJECT = 1;
     public static final int FAIL_REASON_LOCATION_MODULE_NOT_EXIST = 2;
@@ -226,9 +227,14 @@ public final class EasyWifi {
     /**
      * @param wifiTask
      */
-    public static void executeTask(WifiTask wifiTask) {
+    public static void postTask(WifiTask wifiTask) {
         checkIsInitialised();
-        wifiTask.run();
+        synchronized (WIFI_TASKS_QUEUE_LOCK) {
+            WIFI_TASKS_QUEUE.add(wifiTask);
+            if (sCurrentRunningWifiTask == null) {
+                executeNextWifiTaskIfHas();
+            }
+        }
     }
 
     /**
@@ -244,7 +250,7 @@ public final class EasyWifi {
      *
      */
     public static void cancelAllTasks() {
-        synchronized (CUR_WIFI_TASK_LIST_LOCK) {
+        synchronized (WIFI_TASKS_QUEUE_LOCK) {
             Iterator<WifiTask> iterator = getUnmodifiableCurrentTasks().iterator();
             while (iterator.hasNext()) {
                 iterator.next().cancel();
@@ -256,29 +262,29 @@ public final class EasyWifi {
      * @return
      */
     public static ArrayList<WifiTask> getUnmodifiableCurrentTasks() {
-        synchronized (CUR_WIFI_TASK_LIST_LOCK) {
-            checkIsInitialised();
-            return new ArrayList<>(CUR_WIFI_TASKS);
+        checkIsInitialised();
+        synchronized (WIFI_TASKS_QUEUE_LOCK) {
+            return new ArrayList<>(WIFI_TASKS_QUEUE);
         }
     }
 
 
     /****internal****/
-    /**
-     * @param wifiTask
-     */
-    public static void removeTask(WifiTask wifiTask) {
-        synchronized (CUR_WIFI_TASK_LIST_LOCK) {
-            CUR_WIFI_TASKS.remove(wifiTask);
-        }
-    }
+
 
     /**
-     * @param wifiTask
+     *
      */
-    public static void addTask(WifiTask wifiTask) {
-        synchronized (CUR_WIFI_TASK_LIST_LOCK) {
-            CUR_WIFI_TASKS.add(wifiTask);
+    public static void executeNextWifiTaskIfHas() {
+        synchronized (WIFI_TASKS_QUEUE_LOCK) {
+            if (sCurrentRunningWifiTask != null) {
+                WIFI_TASKS_QUEUE.remove(sCurrentRunningWifiTask);
+                sCurrentRunningWifiTask = null;
+            }
+            if (!WIFI_TASKS_QUEUE.isEmpty()) {
+                sCurrentRunningWifiTask = WIFI_TASKS_QUEUE.get(0);
+                sCurrentRunningWifiTask.run();
+            }
         }
     }
 
