@@ -1,7 +1,9 @@
-package com.likangr.easywifi.lib.util;
+package com.likangr.easywifi.demo;
 
 import android.content.Context;
 import android.widget.Toast;
+
+import com.likangr.easywifi.lib.util.ToastHooker;
 
 /**
  * Toast统一管理类

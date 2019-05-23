@@ -29,7 +29,6 @@ import com.likangr.easywifi.lib.core.task.WifiTask;
 import com.likangr.easywifi.lib.core.task.WifiTaskCallback;
 import com.likangr.easywifi.lib.util.Logger;
 import com.likangr.easywifi.lib.util.StringUtils;
-import com.likangr.easywifi.lib.util.ToastUtil;
 import com.likangr.easywifi.lib.util.WifiEncryptionScheme;
 import com.likangr.easywifi.lib.util.WifiUtils;
 
@@ -315,8 +314,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                     boolean isNeedUpdateWifiConfiguration = false;
                     String newEncryptionScheme = WifiEncryptionScheme.getEncryptionSchemeByScanResult(scanResult);
-                    if (!newEncryptionScheme.equals(WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(configuredWifiConfiguration))
-                            || WifiUtils.configuredWifiPasswordIsWrong(configuredWifiConfiguration)) {
+                    //can update wifiConfiguration created by self.
+                    if (!newEncryptionScheme.equals(WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(configuredWifiConfiguration))) {
                         isNeedUpdateWifiConfiguration = true;
                     }
 

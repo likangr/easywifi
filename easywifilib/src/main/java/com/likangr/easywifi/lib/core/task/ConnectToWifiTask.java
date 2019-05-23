@@ -241,7 +241,6 @@ public final class ConnectToWifiTask extends SpecificWifiTask {
             mWifiConfiguration = wifiConfiguration;
         }
 
-        //fixme android p (nokia x6) onConnectToWifiStart lock.
         boolean requestConnectToWifiResult = WifiUtils.connectToConfiguredWifi(EasyWifi.getWifiManager(), mWifiConfiguration.networkId);
 
         if (requestConnectToWifiResult) {

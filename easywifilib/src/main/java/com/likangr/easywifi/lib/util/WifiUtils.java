@@ -65,10 +65,6 @@ public class WifiUtils {
     }
 
 
-    public static boolean configuredWifiPasswordIsWrong(WifiConfiguration wifiConfiguration) {
-        return wifiConfiguration.status == WifiConfiguration.Status.DISABLED;
-    }
-
     public static boolean isNeedPassword(WifiConfiguration wifiConfiguration) {
         return !WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(wifiConfiguration).equals(WifiEncryptionScheme.ENCRYPTION_SCHEME_NONE);
     }
@@ -90,7 +86,10 @@ public class WifiUtils {
 
 
     public static boolean connectToConfiguredWifi(WifiManager wifiManager, int networkId) {
-        return wifiManager.enableNetwork(networkId, true);
+        boolean enableNetwork = wifiManager.enableNetwork(networkId, true);
+        //fixme some devices may be return false; such as Nokia x6.
+        Logger.d(TAG, "enableNetwork=" + enableNetwork);
+        return enableNetwork;
     }
 
 
