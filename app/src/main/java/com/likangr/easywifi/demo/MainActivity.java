@@ -315,7 +315,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                     boolean isNeedUpdateWifiConfiguration = false;
                     String newEncryptionScheme = WifiEncryptionScheme.getEncryptionSchemeByScanResult(scanResult);
-                    if (newEncryptionScheme.equals(WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(configuredWifiConfiguration))
+                    if (!newEncryptionScheme.equals(WifiEncryptionScheme.getEncryptionSchemeByWifiConfiguration(configuredWifiConfiguration))
                             || WifiUtils.configuredWifiPasswordIsWrong(configuredWifiConfiguration)) {
                         isNeedUpdateWifiConfiguration = true;
                     }
