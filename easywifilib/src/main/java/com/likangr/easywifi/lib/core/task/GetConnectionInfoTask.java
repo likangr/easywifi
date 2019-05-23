@@ -30,7 +30,7 @@ public final class GetConnectionInfoTask extends SpecificWifiTask {
 
 
     @Override
-    protected void checkParams() {
+    public void checkIsValid() {
     }
 
     @Override

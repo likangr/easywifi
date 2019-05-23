@@ -69,7 +69,7 @@ public class CheckIsAlreadyConnectedTask extends SpecificWifiTask {
     }
 
     @Override
-    protected void checkParams() {
+    public void checkIsValid() {
         if (TextUtils.isEmpty(mSsid)) {
             throw new IllegalArgumentException("Ssid can not be empty!");
         }

@@ -47,7 +47,7 @@ public final class SetWifiEnabledTask extends SpecificWifiTask {
     }
 
     @Override
-    protected void checkParams() {
+    public void checkIsValid() {
         if (mSetWifiEnabledTimeout < 0) {
             throw new IllegalArgumentException("SetWifiEnabledTimeout must more than 0!");
         }

@@ -79,7 +79,7 @@ public final class ScanWifiTask extends SpecificWifiTask {
 
 
     @Override
-    protected void checkParams() {
+    public void checkIsValid() {
 
         if (mScanWifiTimeout < 0) {
             throw new IllegalArgumentException("ScanWifiTimeout must more than 0!");

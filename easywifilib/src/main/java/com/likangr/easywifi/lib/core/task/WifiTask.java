@@ -120,12 +120,7 @@ public abstract class WifiTask implements Runnable, Parcelable {
         }
     }
 
-    protected abstract void checkParams();
-
-    @Override
-    public synchronized void run() {
-        checkParams();
-    }
+    public abstract void checkIsValid();
 
 
     public synchronized void cancel() {

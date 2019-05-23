@@ -28,7 +28,6 @@ public abstract class SpecificWifiTask extends WifiTask {
 
     @Override
     public synchronized void run() {
-        super.run();
 
         initPrepareEnvironment(mPrepareEnvironmentTask);
         mPrepareEnvironmentTask.setWifiTaskCallback(new WifiTaskCallback<PrepareEnvironmentTask>() {

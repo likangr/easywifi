@@ -181,7 +181,7 @@ public final class ConnectToWifiTask extends SpecificWifiTask {
     }
 
     @Override
-    protected void checkParams() {
+    public void checkIsValid() {
         if (mConnectToWifiTimeout < 0) {
             throw new IllegalArgumentException("ConnectToWifiTimeout must more than 0!");
         }

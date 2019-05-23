@@ -138,7 +138,7 @@ public final class PrepareEnvironmentTask extends WifiTask {
     }
 
     @Override
-    protected void checkParams() {
+    public void checkIsValid() {
         if (mSetWifiEnabledTimeout < 0) {
             throw new IllegalArgumentException("SetWifiEnabledTimeout must more than 0!");
         }
@@ -146,7 +146,7 @@ public final class PrepareEnvironmentTask extends WifiTask {
 
     @Override
     public synchronized void run() {
-        super.run();
+
         if (!callOnTaskStartRun()) {
             return;
         }

@@ -229,6 +229,7 @@ public final class EasyWifi {
     public static void postTask(WifiTask wifiTask) {
         checkIsInitialised();
         synchronized (WIFI_TASKS_QUEUE_LOCK) {
+            wifiTask.checkIsValid();
             WIFI_TASKS_QUEUE.add(wifiTask);
             if (sCurrentRunningWifiTask == null) {
                 executeNextWifiTaskIfHas();
