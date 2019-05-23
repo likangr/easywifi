@@ -1,5 +1,6 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply plugin: 'com.novoda.bintray-release' // must be applied after your artifact generating plugin (eg. java / com.android.library)
 
 def final adaptVersion = 28
 def final minVersion = 14
@@ -16,15 +17,13 @@ android {
     buildTypes {
         release {
             jniDebuggable false
-            minifyEnabled true
+            minifyEnabled false
             zipAlignEnabled true
-            consumerProguardFiles 'proguard-rules.pro'
         }
         debug {
             jniDebuggable true
             minifyEnabled false
             zipAlignEnabled true
-            consumerProguardFiles 'proguard-rules.pro'
         }
     }
 }
@@ -34,4 +33,22 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0-alpha05'
     //kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${lib_version.kotlin}"
+}
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.novoda:bintray-release:0.9.1'
+    }
+}
+
+publish {
+    userOrg = 'likangr'
+    groupId = 'com.likangr.easywifi'
+    artifactId = 'easywifi'
+    publishVersion = '1.0.1-release'
+    desc = 'A library that helps developers quickly perform wifi-related operations on android.'
+    website = 'https://github.com/likangr/easywifi'
 }

@@ -162,7 +162,12 @@ public final class EasyWifi {
         if (sWifiManager == null) {
             return Collections.emptyList();
         }
-        return sWifiManager.getConfiguredNetworks();
+        try {
+            return sWifiManager.getConfiguredNetworks();
+        } catch (SecurityException e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
     }
 
     /**
