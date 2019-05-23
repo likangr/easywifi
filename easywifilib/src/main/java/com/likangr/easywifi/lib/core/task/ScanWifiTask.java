@@ -161,10 +161,11 @@ public final class ScanWifiTask extends SpecificWifiTask {
 
     @Override
     public synchronized void callOnTaskFail(int failReason) {
-        if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED ||
-                failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_TIMEOUT ||
+        if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_TIMEOUT ||
                 failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_UNKNOWN) {
-            if (!mIsHasTriedThroughSystemWifi && EasyWifi.SCAN_WIFI_WAY_INITIATIVE == mScanWifiWay && mIsAutoSwitchToThroughSystemWifi) {
+            if (!mIsHasTriedThroughSystemWifi &&
+                    EasyWifi.SCAN_WIFI_WAY_INITIATIVE == mScanWifiWay &&
+                    mIsAutoSwitchToThroughSystemWifi) {
                 unregisterAutoReleaseReceiver();
                 mIsHasTriedThroughSystemWifi = true;
                 scanWifi(true);
