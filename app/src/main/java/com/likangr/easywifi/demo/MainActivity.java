@@ -163,13 +163,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             } else if (failReason == EasyWifi.FAIL_REASON_SET_WIFI_ENABLED_TIMEOUT) {
                 ToastUtil.showShort(MainActivity.this, "wifi扫描失败，开启wifi超时");
             } else if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_UNKNOWN) {
-                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，未知原因,直接getScanResults");
-                List<ScanResult> scanResults = EasyWifi.getScanResults();
-                updateWifiSsidListFromScanResults(scanResults);
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，未知原因");
             } else if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_TIMEOUT) {
-                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，扫描超时,直接getScanResults");
-                List<ScanResult> scanResults = EasyWifi.getScanResults();
-                updateWifiSsidListFromScanResults(scanResults);
+                ToastUtil.showShort(MainActivity.this, "wifi扫描失败，扫描超时");
             } else if (failReason == EasyWifi.FAIL_REASON_SCAN_WIFI_REQUEST_NOT_BE_SATISFIED) {
                 ToastUtil.showShort(MainActivity.this, "wifi扫描失败，系统不允许扫描");
             }
